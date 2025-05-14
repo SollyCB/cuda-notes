@@ -4,9 +4,11 @@ Kernels
 Kernels are executed by blocks of threads which look like wavefronts. A set of blocks is a grid.
 Blocks can be grouped into clusters after compute 9.
 
-Launching a kernel looks like this.
+Launching a kernel looks like this
 
-::
+.. code:: C
+  :number-lines:
+
   kern<<<nblocks, nthreads_per_block>>>
 
 Defining the cluster setup for a kernel is compile time with ``__cluster_dims__``, or using the
@@ -94,12 +96,12 @@ PTX
 
 "Kernels can be written using the CUDA instruction set architecture, called PTX, which is described
 in the PTX reference manual. It is however usually more effective to use a high-level programming
-language such as C++" - LOL, "don't use PTX, better to avoid it".
+language such as C++" - LOL, "don't write PTX yourself, just leave it to the compiler".
 
 Compilation
 ===========
 
-Interesting: NVCC "modifies the host code" replacing <<<...>>> with cuda runtime function calls for
+Interesting: NVCC "modifies the host code" replacing ``<<<...>>>`` with cuda runtime function calls for
 loading and launching kernels. Looks like it removes this shit from the source code before handing
 the remaining source code off to the host compiler.
 
@@ -182,7 +184,10 @@ Per arch address spaces:
 copies, improving performance.
 
 ``cudaMemcpy<To|From>Symbol`` facilitate the use of constant and global memory spaces, which are
-declared as::
+declared as
+
+.. code:: C
+  :number-lines:
 
   __constant__ float const_data[N];
   __device__ float device_data[N];
@@ -207,8 +212,11 @@ individual.
 If regulating the persistence of L2 cache lines, it is important to explicitly reset memory
 persistence as cache lines may *continue to persist for a long time*.
 
-Page-Locked (Pinned) Host Memory
-================================
+Host Memory
+===========
+
+Page-Locked (Pinned)
+--------------------
 
 ``cudaHostAlloc``, ``cudaFreehost``, ``cudaHostRegister``
 
@@ -229,4 +237,88 @@ pinned memory was allocated. In order to apply the benefits to all devices,
 Performance of pinned memory can be further improved with ``cudaHostAllocWriteCombined`` (as long as
 the host *only ever writes* to this memory).
 
-.. [#] "The front-side bus was used in all Intel Atom, Celeron, Pentium, Core 2, and Xeon processor models through about 2008 and was eliminated in 2009" - https://en.wikipedia.org/wiki/Front-side_bus#Evolution
+.. [#] "The front-side bus was used in all Intel Atom, Celeron, Pentium, Core 2, and Xeon processor
+   models through about 2008 and was eliminated in 2009" -
+   https://en.wikipedia.org/wiki/Front-side_bus#Evolution
+
+Mapped
+------
+
+Memory mapping works as expected (basically the same as Vulkan).
+
+
+Domains
+=======
+
+These facilitate narrowing synchronisation scopes.
+
+In the case
+
+.. code:: C
+  :number-lines:
+
+  __managed__ int x = 0;
+  __device__  cuda::atomic<int, cuda::thread_scope_device> a(0);
+  __managed__ cuda::atomic<int, cuda::thread_scope_system> b(0);
+
+  /* Thread 1 (SM) */
+
+  x = 1;
+  a = 1;
+
+  /* Thread 2 (SM) */
+
+  while (a != 1) ;
+  assert(x == 1);
+  b = 1;
+
+  /* Thread 3 (CPU) */
+
+  while (b != 1) ;
+  assert(x == 1);
+
+the asserts are true due to memory ordering ensuring that the write to ``x`` is visible before the
+the write to ``a``. However, this can lead to inefficiencies where the GPU cannot flush its writes
+until it can be sure that it has waited for other writes, as they may be a part of the sync scope of
+the atomic store.
+
+Using domains, when kernels are launched, they are tagged with an ID, and fence operations will only
+be ordered against those kernels who are tagged with the ID matching the fence's domain. As such, it
+is insufficient to use ``thread_scope_device`` to order operations between kernels outside of a
+fence's doamin: ``thread_scope_system`` must be used instead. While this changes the definition of
+``thread_scope_device``, kernels will default to ID 0, so backwards compatibility is not broken.
+
+Using Domains
+-------------
+
++-----------------------------------------+-------------------------------------------+
+| ``cudaLaunchAttributeMemSyncDomain``    | Select between remote and default domains |
++-----------------------------------------+-------------------------------------------+
+| ``cudaLaunchAttributeMemSyncDomainMap`` | Map logical to physical domains           |
++-----------------------------------------+-------------------------------------------+
+| ``cudaLaunchMemSyncDomainDefault``      | Default domain                            |
++-----------------------------------------+-------------------------------------------+
+| ``cudaLaunchMemSyncDomainRemote``       | Isolate remote memory traffic from local  |
++-----------------------------------------+-------------------------------------------+
+
+``cudaLaunchMemSyncDomainDefault`` and ``cudaLaunchMemSyncDomainRemote`` are logical domains. They
+allow, for instance, a library to logically separate its kernels without having to consider the
+environment that might be going on around it. Then user code can map logical domains to physical
+domains in order to manage how the separation actually occurs. For instance, the user might have two
+different streams, and he separates out these streams using physical domains; then the library code
+getting called further down the stack only knows that it has separated out its kernels, while the
+user knows that the way the work is being managed at a higher level is distinct.
+
+There are 4 physical domains on Hopper (compute 9, cuda 12), older arches will just always report 1
+from ``cudaDevAttrMemSyncDomainCount``, so portable code will just always map kernels to the same
+physical domain.
+
+Meta Info
+=========
+
+Bookmark
+--------
+
+Reached `Asynchronous Concurrent Execution`_.
+
+.. _Asynchronous Concurrent Execution: https://docs.nvidia.com/cuda/cuda-c-programming-guide/#asynchronous-concurrent-execution
