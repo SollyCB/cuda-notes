@@ -1,0 +1,449 @@
+'\" t
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "" "" "" ""
+.SH NAME
+ \- 
+.SH KERNELS
+.sp
+Kernels are executed by blocks of threads which look like wavefronts. A set of blocks is a grid.
+Blocks can be grouped into clusters after compute 9.
+.sp
+Launching a kernel looks like this
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+1 kern<<<nblocks, nthreads_per_block>>>
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+Defining the cluster setup for a kernel is compile time with \fB__cluster_dims__\fP, or using the
+\fBcudaLaunchKernel\fP api.
+.SH MEMORY
+.sp
+Threads in a block can share memory (\(aqshared memory\(aq), threads in a cluster can share memory
+(\(aqdistributed shared memory\(aq). Global memory is shared between all threads.
+.sp
+There is also texture and constant memory for specific uses, obviously. These, and global memory
+are persistent across kernel launches (by the same app, obviously).
+.sp
+Unified memory provides \(aqmanaged memory\(aq which is a single coherent memory image with a common
+address space, which seems equivalent to Vulkan memory allocated from a heap with HOST_COHERENT and
+HOST_VISIBLE flags, which you can access via a regular pointer.
+.SH ASYNC
+.sp
+A cuda threads is the lowest abstraction over computation and memory operations.
+.sp
+Async work is that which is initiated by a cuda thread, and executed asynchronously \fIas\-if\fP by
+another thread (unclear if this means that the work is always done on the initiating thread? Or if
+the work could be handed to someone else? Unclear if this matters at all, or if people rely on
+either of these cases).
+.sp
+Synchronisation of an async operation has the following scopes, which are intuitive:
+.TS
+box center;
+l|l.
+T{
+Thread scope
+T}	T{
+Description
+T}
+_
+T{
+cuda::thread_scope::thread_scope_thread
+T}	T{
+Only the CUDA thread which initiated asynchronous operations synchronizes.
+T}
+_
+T{
+cuda::thread_scope::thread_scope_block
+T}	T{
+All or any CUDA threads within the same thread block as the initiating thread synchronizes.
+T}
+_
+T{
+cuda::thread_scope::thread_scope_device
+T}	T{
+All or any CUDA threads in the same GPU device as the initiating thread synchronizes.
+T}
+_
+T{
+cuda::thread_scope::thread_scope_system
+T}	T{
+All or any CUDA or CPU threads in the same system as the initiating thread synchronizes.
+T}
+.TE
+.SH COMPUTE CAPABILITY
+.sp
+The names of the Nvidia arches and what \(aqcompute capability\(aq they map to.
+.TS
+box center;
+l|l.
+T{
+Major Revision Number
+T}	T{
+NVIDIA GPU Architecture
+T}
+_
+T{
+9
+T}	T{
+NVIDIA Hopper GPU Architecture
+T}
+_
+T{
+8
+T}	T{
+NVIDIA Ampere GPU Architecture
+T}
+_
+T{
+7
+T}	T{
+NVIDIA Volta GPU Architecture
+T}
+_
+T{
+6
+T}	T{
+NVIDIA Pascal GPU Architecture
+T}
+_
+T{
+5
+T}	T{
+NVIDIA Maxwell GPU Architecture
+T}
+_
+T{
+3
+T}	T{
+NVIDIA Kepler GPU Architecture
+T}
+.TE
+.sp
+Some incremental thing that I am just noting for the completeness and pedanticness of it all.
+.TS
+box center;
+l|l|l.
+T{
+Compute Capability
+T}	T{
+NVIDIA GPU Architecture
+T}	T{
+Based On
+T}
+_
+T{
+7.5
+T}	T{
+NVIDIA Turing GPU Architecture
+T}	T{
+NVIDIA Volta GPU Architecture
+T}
+.TE
+.sp
+Compute capability is not the same as cuda version, although some cuda versions will stop supporting older arches.
+.SH PROGRAMMING INTERFACE
+.sp
+Runtime api allows allocating and deallocating device memory and launching kernels. The driver api
+is a superset of the runtime, providing access to \(aqcuda contexts\(aq: an \(dqanalogue of host processes
+for the device\(dq (I guess this means \- in the unix explanation \- that a process is just a set of
+resources that are being used by some progam); and cuda modules: dynamic libraries for the device
+(intuitive).
+.SH PTX
+.sp
+\(dqKernels can be written using the CUDA instruction set architecture, called PTX, which is described
+in the PTX reference manual. It is however usually more effective to use a high\-level programming
+language such as C++\(dq \- LOL, \(dqdon\(aqt write PTX yourself, just leave it to the compiler\(dq.
+.SH COMPILATION
+.sp
+Interesting: NVCC \(dqmodifies the host code\(dq replacing \fB<<<...>>>\fP with cuda runtime function calls for
+loading and launching kernels. Looks like it removes this shit from the source code before handing
+the remaining source code off to the host compiler.
+.INDENT 0.0
+.INDENT 3.5
+The modified host code is output either as C++ code that is left to be compiled using another tool
+or as object code directly by letting nvcc invoke the host compiler during the last compilation
+stage.
+.UNINDENT
+.UNINDENT
+.SH JIT
+.sp
+In cuda this refers to the device driver compiling PTX code loaded by the app at runtime into binary
+code.
+.sp
+Ah, interesting: while this (obviously) increases load times, it means that an app compiled to PTX
+code can run on future devices, and benefit from future compiler optimisations. That makes good
+sense.
+.sp
+This compilation is cached and invalidated when the driver updates.
+.SH BINARY COMPAT
+.sp
+Controlled by the \fB\-code\fP flag.
+.sp
+Binary compatibility is guaranteed forwards for minor versions, but not backwards, and not for major
+releases. So a binary for \fB8.5\fP would work with \fB8.6\fP, but not \fB8.4\fP\&.
+.SH PTX COMPAT
+.sp
+Controlled by the \fB\-arch\fP flag.
+.sp
+The flag can take a compute capability (e.g. \fBcompute_50\fP), a specific arch (e.g. \fBsm_90a\fP,
+\fBcompute_90a\fP), or a specific family (e.g. \fBsm_100f\fP). Compute capability compilation is forward
+compatible, arch specific is only compatible on the exact physical arch, and family specific runs on
+the exact arch and arches in the same family.
+.SH APP COMPAT
+.sp
+The \fB\-gencode\fP flag can be used to embed code for various architectures in the same binary, the
+most appropriate of which is selected at runtime.
+.sp
+The \fB__CUDA_ARCH__\fP, \fB__CUDA_ARCH_FAMILY_SPECIFIC__\fP and \fB__CUDA_ARCH_SPECIFIC__\fP macros can
+be used to control source code compilation.
+.SH INITIALIZATION
+.sp
+A context gets created for each device: these are the \(aqprimary device contexts\(aq. A context is shared
+between all host application threads (like a Vulkan VkDevice it seems).
+.sp
+JIT\(aqing device code and loading it into device memory happens as a part of context creation.
+.sp
+A device\(aqs primary context can be accessed through the driver API.
+.sp
+\fBcudaDeviceReset()\fP destroys the primary context of the current device, and the next runtime
+call from any thread which has the same current device will result in the creation of a new primary
+context for the device.
+.SH DEVICE MEMORY
+.sp
+Can be allocated either as linear memory, or cuda arrays, the latter of which are and opaque layout
+optimized for texture fetches. Linear memory is allocated from a unified address space, so separate
+allocations can reference eachother via pointers (so just the x64 contiguous block of virtual pages
+type shit).
+.sp
+Per arch address spaces:
+.TS
+box center;
+l|l|l|l.
+T{
+T}	T{
+x86_64 (AMD64)
+T}	T{
+POWER (ppc64le)
+T}	T{
+ARM64
+T}
+_
+T{
+up to compute capability 5.3 (Maxwell)
+T}	T{
+40bit
+T}	T{
+40bit
+T}	T{
+40bit
+T}
+_
+T{
+compute capability 6.0 (Pascal) or newer
+T}	T{
+up to 47bit
+T}	T{
+up to 49bit
+T}	T{
+up to 48bit
+T}
+.TE
+.sp
+\fBcudaMallocPitch\fP and \fBcudaMalloc3D\fP ensure alignment requirements for 2D or 3D array memory
+copies, improving performance.
+.sp
+\fBcudaMemcpy<To|From>Symbol\fP facilitate the use of constant and global memory spaces, which are
+declared as
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+1 __constant__ float const_data[N];
+2 __device__ float device_data[N];
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+\fBcudaGetSymbolAddress()\fP and \fBcudaGetSymbolSize()\fP implement queries regarding global data.
+.SH L2 MEMORY ACCESS
+.sp
+When accessing global data or cuda graph nodes, single accesses are considered \(dqstreamed\(dq, and
+repeated access is considered persistent. The likelihood that such data can be cache resident can be
+increased using the \fBaccessPolicyWindow\fP struct in \fBcudaStreamAttrValue\fP and
+\fBcudaKernelNodeAttrValue\fP\&. Some data range can have its likelihood have its chance of a cache hit
+regulated by the hitRatio <https://docs.nvidia.com/cuda/cuda-c-programming-guide/#l2-policy-for-persisting-accesses>
+ field.
+.sp
+Global memory accesses can also be controlled with \fBcudaAccessPropertyStreaming\fP and
+\fBcudaAccessPropertyPersisting\fP which inform how likely it is that an access will be repeated, or
+individual.
+.sp
+If regulating the persistence of L2 cache lines, it is important to explicitly reset memory
+persistence as cache lines may \fIcontinue to persist for a long time\fP\&.
+.SH HOST MEMORY
+.SS Page\-Locked (Pinned)
+.sp
+\fBcudaHostAlloc\fP, \fBcudaFreehost\fP, \fBcudaHostRegister\fP
+.sp
+Facilitates mapping ranges into the device\(aqs address space, removing the need for copies, and
+can increase bandwidth (although this last point seems irrelevant since it is specific to a
+front\-side bus, but this seems old as shit?[#]_). Also
+.INDENT 0.0
+.INDENT 3.5
+Copies between page\-locked host memory and device memory can be performed concurrently with kernel
+execution for some devices as mentioned in.
+.UNINDENT
+.UNINDENT
+.sp
+which I don\(aqt quite get: I don\(aqt know why pinning is requirement here. Maybe because the kernel can
+execute since it doesn\(aqt have to worry about the memory not being there?
+.sp
+Note that the benefits above are only available by default to the device that was current when the
+pinned memory was allocated. In order to apply the benefits to all devices,
+\fBcudaHostAllocPortable\fP must be specified.
+.sp
+Performance of pinned memory can be further improved with \fBcudaHostAllocWriteCombined\fP (as long as
+the host \fIonly ever writes\fP to this memory).
+.IP [1] 5
+\(dqThe front\-side bus was used in all Intel Atom, Celeron, Pentium, Core 2, and Xeon processor
+models through about 2008 and was eliminated in 2009\(dq \-
+ <https://en.wikipedia.org/wiki/Front\-side_bus#Evolution> 
+.SS Mapped
+.sp
+Memory mapping works as expected (basically the same as Vulkan).
+.SH DOMAINS
+.sp
+These facilitate narrowing synchronisation scopes.
+.sp
+In the case
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+ 1 __managed__ int x = 0;
+ 2 __device__  cuda::atomic<int, cuda::thread_scope_device> a(0);
+ 3 __managed__ cuda::atomic<int, cuda::thread_scope_system> b(0);
+ 4 
+ 5 /* Thread 1 (SM) */
+ 6 
+ 7 x = 1;
+ 8 a = 1;
+ 9 
+10 /* Thread 2 (SM) */
+11 
+12 while (a != 1) ;
+13 assert(x == 1);
+14 b = 1;
+15 
+16 /* Thread 3 (CPU) */
+17 
+18 while (b != 1) ;
+19 assert(x == 1);
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+the asserts are true due to memory ordering ensuring that the write to \fBx\fP is visible before the
+the write to \fBa\fP\&. However, this can lead to inefficiencies where the GPU cannot flush its writes
+until it can be sure that it has waited for other writes, as they may be a part of the sync scope of
+the atomic store.
+.sp
+Using domains, when kernels are launched, they are tagged with an ID, and fence operations will only
+be ordered against those kernels who are tagged with the ID matching the fence\(aqs domain. As such, it
+is insufficient to use \fBthread_scope_device\fP to order operations between kernels outside of a
+fence\(aqs doamin: \fBthread_scope_system\fP must be used instead. While this changes the definition of
+\fBthread_scope_device\fP, kernels will default to ID 0, so backwards compatibility is not broken.
+.SS Using Domains
+.TS
+box center;
+l|l.
+T{
+\fBcudaLaunchAttributeMemSyncDomain\fP
+T}	T{
+Select between remote and default domains
+T}
+_
+T{
+\fBcudaLaunchAttributeMemSyncDomainMap\fP
+T}	T{
+Map logical to physical domains
+T}
+_
+T{
+\fBcudaLaunchMemSyncDomainDefault\fP
+T}	T{
+Default domain
+T}
+_
+T{
+\fBcudaLaunchMemSyncDomainRemote\fP
+T}	T{
+Isolate remote memory traffic from local
+T}
+.TE
+.sp
+\fBcudaLaunchMemSyncDomainDefault\fP and \fBcudaLaunchMemSyncDomainRemote\fP are logical domains. They
+allow, for instance, a library to logically separate its kernels without having to consider the
+environment that might be going on around it. Then user code can map logical domains to physical
+domains in order to manage how the separation actually occurs. For instance, the user might have two
+different streams, and he separates out these streams using physical domains; then the library code
+getting called further down the stack only knows that it has separated out its kernels, while the
+user knows that the way the work is being managed at a higher level is distinct.
+.sp
+There are 4 physical domains on Hopper (compute 9, cuda 12), older arches will just always report 1
+from \fBcudaDevAttrMemSyncDomainCount\fP, so portable code will just always map kernels to the same
+physical domain.
+.SH ASYNC CONCURRENT EXECUTION
+.INDENT 0.0
+.IP \(bu 2
+Computation on the host;
+.IP \(bu 2
+Computation on the device;
+.IP \(bu 2
+Memory transfers from the host to the device;
+.IP \(bu 2
+Memory transfers from the device to the host;
+.IP \(bu 2
+Memory transfers within the memory of a given device;
+.IP \(bu 2
+Memory transfers among devices.
+.UNINDENT
+.SH META INFO
+.SS Bookmark
+.sp
+Reached Asynchronous Concurrent Execution <https://docs.nvidia.com/cuda/cuda-c-programming-guide/#asynchronous-concurrent-execution>
+\&.
+.\" Generated by docutils manpage writer.
+.

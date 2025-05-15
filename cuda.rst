@@ -313,12 +313,87 @@ There are 4 physical domains on Hopper (compute 9, cuda 12), older arches will j
 from ``cudaDevAttrMemSyncDomainCount``, so portable code will just always map kernels to the same
 physical domain.
 
+Async Concurrent Execution
+==========================
+
+Independent tasks which can operate concurrently:
+
+- Computation on the host;
+- Computation on the device;
+- Memory transfers from the host to the device;
+- Memory transfers from the device to the host;
+- Memory transfers within the memory of a given device;
+- Memory transfers among devices.
+
+Operations which can be launched from the host, with control returned to the host before the
+operation has completed:
+
+- Kernel launches;
+- Memory copies within a single device’s memory;
+- Memory copies from host to device of a memory block of 64 KB or less;
+- Memory copies performed by functions that are suffixed with ``Async``;
+- Memory set function calls.
+
+Note that:
+
+- **``Async`` memory copies might also be synchronous if they involve host memory that is not
+  page-locked.**
+- Kernel launches are synchronous if hardware counters are collected via a profiler (Nsight, Visual
+  Profiler) unless concurrent kernel profiling is enabled.
+
+Concurrent Kernels
+------------------
+
+Supported at 2.x and above, but:
+
+  A kernel from one CUDA context cannot execute concurrently with a kernel from another CUDA context.
+  The GPU may time slice to provide forward progress to each context. If a user wants to run kernels
+  from multiple process simultaneously on the SM, one must enable MPS.
+
+Also kernels with lots of memory are less likely to run concurrently (intuitive).
+
+Memory copies can happen async with kernel execution, resembling Vulkan dedicated transfer queues.
+
+Memory download and upload can also be overlapped, but involved host memory must be pinned.
+
+Streams
+=======
+
+Streams are just Vulkan command buffers: you submit them in sequence, but they can execute
+concurrently, out of order with eachother, etc. Commands start executing when their dependencies are
+met, which can be within stream or cross stream. Work on a stream can overlap according the rules
+described above.
+
+Calling ``cudaStreamDestroy`` while the device is still chewing through it will cause the function
+to immediately return with the stream's resources being cleaned up automatically later.
+
+Default Stream
+--------------
+
+Not specifying a stream or passing 0 will use the default stream. This doesn't seem any different
+just basically using a single command buffer for all your shit, but I might wrong because
+
+  For code that is compiled using the --default-stream per-thread compilation flag (or that defines
+  the CUDA_API_PER_THREAD_DEFAULT_STREAM macro before including CUDA headers (cuda.h and
+  cuda_runtime.h)), the default stream is a regular stream and each host thread has its own default
+  stream.
+
+which could imply that the default stream otherwise is not regular? But an earlier quote
+
+  Kernel launches... are issued to the default stream. They are therefore executed in order.
+
+in using 'therefore' implies that the default stream without the aforementioned switches is still a
+regular stream, and the "executed in order" only refers to the fact that work in a stream is
+initiated in the order that it appears in the stream, but does not necessarily complete in the order
+in which it was submitted.
+
+I am going with "the default stream is a regular stream, and per-thread default streams are also
+just streams, but they are used when a stream is not specified per-thread, not globally".
+
 Meta Info
 =========
 
 Bookmark
 --------
 
-Reached `Asynchronous Concurrent Execution`_.
-
-.. _Asynchronous Concurrent Execution: https://docs.nvidia.com/cuda/cuda-c-programming-guide/#asynchronous-concurrent-execution
+https://docs.nvidia.com/cuda/cuda-c-programming-guide/#default-stream
