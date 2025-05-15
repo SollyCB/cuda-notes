@@ -222,7 +222,7 @@ Page-Locked (Pinned)
 
 Facilitates mapping ranges into the device's address space, removing the need for copies, and
 can increase bandwidth (although this last point seems irrelevant since it is specific to a
-front-side bus, but this seems old as shit?[#]_). Also
+front-side bus, but this seems old as shit? [#]_). Also
 
   Copies between page-locked host memory and device memory can be performed concurrently with kernel
   execution for some devices as mentioned in.
@@ -245,7 +245,6 @@ Mapped
 ------
 
 Memory mapping works as expected (basically the same as Vulkan).
-
 
 Domains
 =======
@@ -390,10 +389,241 @@ in which it was submitted.
 I am going with "the default stream is a regular stream, and per-thread default streams are also
 just streams, but they are used when a stream is not specified per-thread, not globally".
 
+Async Concurrent Execution
+==========================
+
+Independent tasks which can operate concurrently:
+
+- Computation on the host;
+- Computation on the device;
+- Memory transfers from the host to the device;
+- Memory transfers from the device to the host;
+- Memory transfers within the memory of a given device;
+- Memory transfers among devices.
+
+Operations which can be launched from the host, with control returned to the host before the
+operation has completed:
+
+- Kernel launches;
+- Memory copies within a single device’s memory;
+- Memory copies from host to device of a memory block of 64 KB or less;
+- Memory copies performed by functions that are suffixed with ``Async``;
+- Memory set function calls.
+
+Note that:
+
+- **``Async`` memory copies might also be synchronous if they involve host memory that is not
+  page-locked.**
+- Kernel launches are synchronous if hardware counters are collected via a profiler (Nsight, Visual
+  Profiler) unless concurrent kernel profiling is enabled.
+
+Concurrent Kernels
+------------------
+
+Supported at 2.x and above, but:
+
+  A kernel from one CUDA context cannot execute concurrently with a kernel from another CUDA context.
+  The GPU may time slice to provide forward progress to each context. If a user wants to run kernels
+  from multiple process simultaneously on the SM, one must enable MPS.
+
+Also kernels with lots of memory are less likely to run concurrently (intuitive).
+
+Memory copies can happen async with kernel execution, resembling Vulkan dedicated transfer queues.
+
+Memory download and upload can also be overlapped, but involved host memory must be pinned.
+
+Streams
+=======
+
+Streams are just Vulkan command buffers: you submit them in sequence, but they can execute
+concurrently, out of order with eachother, etc. Commands start executing when their dependencies are
+met, which can be within stream or cross stream. Work on a stream can overlap according the rules
+described above.
+
+Calling ``cudaStreamDestroy`` while the device is still chewing through it will cause the function
+to immediately return with the stream's resources being cleaned up automatically later.
+
+Default Stream
+--------------
+
+Not specifying a stream or passing 0 will use the default stream. This doesn't seem any different
+just basically using a single command buffer for all your shit, but I might wrong because
+
+  For code that is compiled using the --default-stream per-thread compilation flag (or that defines
+  the CUDA_API_PER_THREAD_DEFAULT_STREAM macro before including CUDA headers (cuda.h and
+  cuda_runtime.h)), the default stream is a regular stream and each host thread has its own default
+  stream.
+
+which could imply that the default stream otherwise is not regular? But an earlier quote
+
+  Kernel launches... are issued to the default stream. They are therefore executed in order.
+
+in using 'therefore' implies that the default stream without the aforementioned switches is still a
+regular stream, and the "executed in order" only refers to the fact that work in a stream is
+initiated in the order that it appears in the stream, but does not necessarily complete in the order
+in which it was submitted.
+
+I am going with "the default stream is a regular stream, and per-thread default streams are also
+just streams, but they are used when a stream is not specified per-thread, not globally".
+
+If code is compiled without specifying a ``--default-stream``, ``--default-stream legacy`` is
+assumed, which causes each device to have a single *NULL stream*, shared by all host threads, which
+has implicit synchronisation (see below).
+
+Synchronisation
+---------------
+
+Explicit
+^^^^^^^^
+
+- ``cudaDeviceSynchronize``
+  Block host until all streams in all threads have completed.
+- ``cudaStreamSynchronize``
+  Block host until given stream has completed.
+- ``cudaStreamWaitEvent``
+  Like a hardcore, zero granularity pipeline barrier: all commands in the stream after this call
+  must wait for all commands before the call to complete.
+- ``cudaStreamQuery``
+  Ask if preceding commands in a stream have completed.
+
+Implicit
+^^^^^^^^
+
+The NULL stream causes total stream sync:
+
+  Two operations from different streams cannot run concurrently if any CUDA operation on the NULL
+  stream is submitted in-between them, unless the streams are non-blocking streams (created with the
+  cudaStreamNonBlocking flag).
+
+So don't mix async stream submissions and NULL stream submissions, is the very obvious tip that the
+docs give following this quote.
+
+Host Callbacks
+--------------
+
+Host functions can be inserted into a stream and will run once commands preceding it in the stream
+have completed. Commands later in the stream do not execute until the host function has returned.
+
+Priority
+--------
+
+Streams can be given a priority which hints the GPU about what to schedule first. Stream priority
+does not provide any ordering guarantees and cannot preempt or interrupt work.
+
+Programmatic Dependent Launch
+=============================
+
+A fancy way of saying 'Vulkan pipeline barriers': it allows a kernel to begin execution before its
+dependencies have completed if the kernel has work that it can do that is not dependent (like how
+Vulkan pipeline barriers allow you to wait on specific stages, as opposed to having to wait for an
+entire pipeline).
+
+This is achieved via ``cudaTriggerProgrammaticLaunchCompletion`` and
+``cudaGridDependencySynchronize``, where the latter is called on a dependent kernel, and blocks
+until it sees the former, which will be called in the earlier kernel once it has completed all the
+work that the later kernel actually depends on (the call itself is a flush). If the earlier kernel
+does not call the explicit signal, it is implicitly called when the kernel completes.
+
+Concurrency is not guaranteed, only being applied opportunistically.
+
+Use with graphs
+---------------
+
++---------------------------------------------------------------------+---------------------------------------------------------------------+
+| Stream Code                                                         | Graph Edge                                                          |
++=====================================================================+=====================================================================+
+| | cudaLaunchAttribute attribute;                                    | | cudaGraphEdgeData edgeData;                                       |
+| | attribute.id = cudaLaunchAttributeProgrammaticStreamSerialization;| | edgeData.type = cudaGraphDependencyTypeProgrammatic;              |
+| | attribute.val.programmaticStreamSerializationAllowed = 1;         | | edgeData.from_port = cudaGraphKernelNodePortProgrammatic;         |
++---------------------------------------------------------------------+---------------------------------------------------------------------+
+| | cudaLaunchAttribute attribute;                                    | | cudaGraphEdgeData edgeData;                                       |
+| | attribute.id = cudaLaunchAttributeProgrammaticEvent;              | | edgeData.type = cudaGraphDependencyTypeProgrammatic;              |
+| | attribute.val.programmaticEvent.triggerAtBlockStart = 0;          | | edgeData.from_port = cudaGraphKernelNodePortProgrammatic;         |
++---------------------------------------------------------------------+---------------------------------------------------------------------+
+| | cudaLaunchAttribute attribute;                                    | | cudaGraphEdgeData edgeData;                                       |
+| | attribute.id = cudaLaunchAttributeProgrammaticEvent;              | | edgeData.type = cudaGraphDependencyTypeProgrammatic;              |
+| | attribute.val.programmaticEvent.triggerAtBlockStart = 1;          | | edgeData.from_port = cudaGraphKernelNodePortLaunchCompletion;     |
++---------------------------------------------------------------------+---------------------------------------------------------------------+
+
+Graphs
+======
+
+Resemble Vulkan subpasses, where you program in the depedency edges, and the driver inserts in the
+synchronisation, whereas normally in Vulkan you are both defining the depedency edges and inserting
+the synchronisation yourself.
+
+The rationale behind graphs is that when submitting a kernel on a stream, the driver has to do a
+bunch of setup for that kernel without much of the context about how it fits into the broader
+workflow. In this way, one cannot consider Vulkan command buffers as CUDA streams, because the
+Vulkan driver needn't do any of this same setup: a command buffer in Vulkan is low-level enough that
+you are able to describe the graph yourself, the driver just passes the instructions to the GPU for
+chewing, since all of the setup is on you.
+
+With a CUDA graph, the driver still has to do all the work for you, but it has more information with
+which it can reason about the work. Graph workflow is also in three stages, the second of which is
+bake/compilation, meaning that the driver doesn't have to keep doing setup work over and over, since
+it does the work once, and then that work is reusable.
+
+The three stages are BS: definition, compilation, launching. It is just Vulkan command buffer, but
+the driver makes it for you: a resusable set of work that can be passed to the GPU with less driver
+overhead.
+
+Nodes
+-----
+
+A node on a graph is scheduling any time after its dependencies are met.
+
+A node is any of the following operations:
+
+- kernel
+- CPU function call
+- memory copy
+- memset
+- empty node
+- waiting on an event
+- recording an event
+- signalling an external semaphore
+- waiting on an external semaphore
+- conditional node
+- child graph
+
+Edge Data
+---------
+
+This is exactly Vulkan pipeline dependencies: edge data is defined by an outgoing port, an incoming
+port, and a type. This is just Vulkan execution scopes and how they are grouped: like a memory copy
+could map be something like a buffer upload waited on by a vertex shader:
+
++-----------+-------------------------+---------------------------------------------------------------------+
+| CUDA Name | Vulkan Equivalent Name  | Vulkan Data Value                                                   |
++===========+=========================+=====================================================================+
+|  type     | VkAccessFlags           | VK_ACCESS_MEMORY_WRITE_BIT                                          |
++-----------+-------------------------+---------------------------------------------------------------------+
+|  outgoing | VkPipelineStageFlagBits | VK_PIPELINE_STAGE_2_TRANSFER_BIT                                    |
++-----------+-------------------------+---------------------------------------------------------------------+
+|  incoming | VkPipelineStageFlagBits | VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT                                |
++-----------+-------------------------+---------------------------------------------------------------------+
+
+Where the 'ports' are Vulkan 'synchronisation scopes', and the 'type' defines the access scope [#]_
+(although I am not sure what direction incoming and outgoing are, as it depends on how you consider
+the direction that the edges are pointing in).
+
+.. [#] https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#synchronization-dependencies
+
+Edge Data From Stream Capture
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. TODO: Come back to this with more info
+
+There is also some weirdness to do with getting the edge data using stream capture API which seems
+to have some potential gotchas to do with edges that do not wait for full completion (this section
+will be expanded when I have more info, which I assume I will get once I read the stream capture
+section).
+
 Meta Info
 =========
 
 Bookmark
 --------
 
-https://docs.nvidia.com/cuda/cuda-c-programming-guide/#default-stream
+https://docs.nvidia.com/cuda/cuda-c-programming-guide/#creating-a-graph-using-graph-apis
