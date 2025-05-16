@@ -39,46 +39,46 @@ either of these cases).
 
 Synchronisation of an async operation has the following scopes, which are intuitive:
 
-+-----------------------------------------+---------------------------------------------------------------------------------------------+
-| Thread scope                            | Description                                                                                 |
-+=========================================+=============================================================================================+
-| cuda::thread_scope::thread_scope_thread | Only the CUDA thread which initiated asynchronous operations synchronizes.                  |
-+-----------------------------------------+---------------------------------------------------------------------------------------------+
-| cuda::thread_scope::thread_scope_block  | All or any CUDA threads within the same thread block as the initiating thread synchronizes. |
-+-----------------------------------------+---------------------------------------------------------------------------------------------+
-| cuda::thread_scope::thread_scope_device | All or any CUDA threads in the same GPU device as the initiating thread synchronizes.       |
-+-----------------------------------------+---------------------------------------------------------------------------------------------+
-| cuda::thread_scope::thread_scope_system | All or any CUDA or CPU threads in the same system as the initiating thread synchronizes.    |
-+-----------------------------------------+---------------------------------------------------------------------------------------------+
+  +-----------------------------------------+---------------------------------------------------------------------------------------------+
+  | Thread scope                            | Description                                                                                 |
+  +=========================================+=============================================================================================+
+  | cuda::thread_scope::thread_scope_thread | Only the CUDA thread which initiated asynchronous operations synchronizes.                  |
+  +-----------------------------------------+---------------------------------------------------------------------------------------------+
+  | cuda::thread_scope::thread_scope_block  | All or any CUDA threads within the same thread block as the initiating thread synchronizes. |
+  +-----------------------------------------+---------------------------------------------------------------------------------------------+
+  | cuda::thread_scope::thread_scope_device | All or any CUDA threads in the same GPU device as the initiating thread synchronizes.       |
+  +-----------------------------------------+---------------------------------------------------------------------------------------------+
+  | cuda::thread_scope::thread_scope_system | All or any CUDA or CPU threads in the same system as the initiating thread synchronizes.    |
+  +-----------------------------------------+---------------------------------------------------------------------------------------------+
 
 Compute Capability
 ==================
 
 The names of the Nvidia arches and what 'compute capability' they map to.
 
-+----------------------------------+---------------------------------+
-| Major Revision Number            | NVIDIA GPU Architecture         |
-+==================================+=================================+
-| 9                                | NVIDIA Hopper GPU Architecture  |
-+----------------------------------+---------------------------------+
-| 8                                | NVIDIA Ampere GPU Architecture  |
-+----------------------------------+---------------------------------+
-| 7                                | NVIDIA Volta GPU Architecture   |
-+----------------------------------+---------------------------------+
-| 6                                | NVIDIA Pascal GPU Architecture  |
-+----------------------------------+---------------------------------+
-| 5                                | NVIDIA Maxwell GPU Architecture |
-+----------------------------------+---------------------------------+
-| 3                                | NVIDIA Kepler GPU Architecture  |
-+----------------------------------+---------------------------------+
+  +----------------------------------+---------------------------------+
+  | Major Revision Number            | NVIDIA GPU Architecture         |
+  +==================================+=================================+
+  | 9                                | NVIDIA Hopper GPU Architecture  |
+  +----------------------------------+---------------------------------+
+  | 8                                | NVIDIA Ampere GPU Architecture  |
+  +----------------------------------+---------------------------------+
+  | 7                                | NVIDIA Volta GPU Architecture   |
+  +----------------------------------+---------------------------------+
+  | 6                                | NVIDIA Pascal GPU Architecture  |
+  +----------------------------------+---------------------------------+
+  | 5                                | NVIDIA Maxwell GPU Architecture |
+  +----------------------------------+---------------------------------+
+  | 3                                | NVIDIA Kepler GPU Architecture  |
+  +----------------------------------+---------------------------------+
 
 Some incremental thing that I am just noting for the completeness and pedanticness of it all.
 
-+----------------------------------+--------------------------------+-------------------------------+
-| Compute Capability               | NVIDIA GPU Architecture        | Based On                      |
-+==================================+================================+===============================+
-| 7.5                              | NVIDIA Turing GPU Architecture | NVIDIA Volta GPU Architecture |
-+----------------------------------+--------------------------------+-------------------------------+
+  +----------------------------------+--------------------------------+-------------------------------+
+  | Compute Capability               | NVIDIA GPU Architecture        | Based On                      |
+  +==================================+================================+===============================+
+  | 7.5                              | NVIDIA Turing GPU Architecture | NVIDIA Volta GPU Architecture |
+  +----------------------------------+--------------------------------+-------------------------------+
 
 Compute capability is not the same as cuda version, although some cuda versions will stop supporting older arches.
 
@@ -172,13 +172,13 @@ type shit).
 
 Per arch address spaces:
 
-+------------------------------------------+----------------+-----------------+-----------------------+
-|                                          | x86_64 (AMD64) | POWER (ppc64le) | ARM64                 |
-+==========================================+================+=================+=======================+
-| up to compute capability 5.3 (Maxwell)   | 40bit          | 40bit           | 40bit                 |
-+------------------------------------------+----------------+-----------------+-----------------------+
-| compute capability 6.0 (Pascal) or newer | up to 47bit    | up to 49bit     | up to 48bit           |
-+------------------------------------------+----------------+-----------------+-----------------------+
+  +------------------------------------------+----------------+-----------------+-----------------------+
+  |                                          | x86_64 (AMD64) | POWER (ppc64le) | ARM64                 |
+  +==========================================+================+=================+=======================+
+  | up to compute capability 5.3 (Maxwell)   | 40bit          | 40bit           | 40bit                 |
+  +------------------------------------------+----------------+-----------------+-----------------------+
+  | compute capability 6.0 (Pascal) or newer | up to 47bit    | up to 49bit     | up to 48bit           |
+  +------------------------------------------+----------------+-----------------+-----------------------+
 
 ``cudaMallocPitch`` and ``cudaMalloc3D`` ensure alignment requirements for 2D or 3D array memory
 copies, improving performance.
@@ -290,15 +290,15 @@ fence's doamin: ``thread_scope_system`` must be used instead. While this changes
 Using Domains
 -------------
 
-+-----------------------------------------+-------------------------------------------+
-| ``cudaLaunchAttributeMemSyncDomain``    | Select between remote and default domains |
-+-----------------------------------------+-------------------------------------------+
-| ``cudaLaunchAttributeMemSyncDomainMap`` | Map logical to physical domains           |
-+-----------------------------------------+-------------------------------------------+
-| ``cudaLaunchMemSyncDomainDefault``      | Default domain                            |
-+-----------------------------------------+-------------------------------------------+
-| ``cudaLaunchMemSyncDomainRemote``       | Isolate remote memory traffic from local  |
-+-----------------------------------------+-------------------------------------------+
+   +-----------------------------------------+-------------------------------------------+
+   | ``cudaLaunchAttributeMemSyncDomain``    | Select between remote and default domains |
+   +-----------------------------------------+-------------------------------------------+
+   | ``cudaLaunchAttributeMemSyncDomainMap`` | Map logical to physical domains           |
+   +-----------------------------------------+-------------------------------------------+
+   | ``cudaLaunchMemSyncDomainDefault``      | Default domain                            |
+   +-----------------------------------------+-------------------------------------------+
+   | ``cudaLaunchMemSyncDomainRemote``       | Isolate remote memory traffic from local  |
+   +-----------------------------------------+-------------------------------------------+
 
 ``cudaLaunchMemSyncDomainDefault`` and ``cudaLaunchMemSyncDomainRemote`` are logical domains. They
 allow, for instance, a library to logically separate its kernels without having to consider the
@@ -452,21 +452,21 @@ Concurrency is not guaranteed, only being applied opportunistically.
 Use with graphs
 ---------------
 
-+---------------------------------------------------------------------+---------------------------------------------------------------------+
-| Stream Code                                                         | Graph Edge                                                          |
-+=====================================================================+=====================================================================+
-| | cudaLaunchAttribute attribute;                                    | | cudaGraphEdgeData edgeData;                                       |
-| | attribute.id = cudaLaunchAttributeProgrammaticStreamSerialization;| | edgeData.type = cudaGraphDependencyTypeProgrammatic;              |
-| | attribute.val.programmaticStreamSerializationAllowed = 1;         | | edgeData.from_port = cudaGraphKernelNodePortProgrammatic;         |
-+---------------------------------------------------------------------+---------------------------------------------------------------------+
-| | cudaLaunchAttribute attribute;                                    | | cudaGraphEdgeData edgeData;                                       |
-| | attribute.id = cudaLaunchAttributeProgrammaticEvent;              | | edgeData.type = cudaGraphDependencyTypeProgrammatic;              |
-| | attribute.val.programmaticEvent.triggerAtBlockStart = 0;          | | edgeData.from_port = cudaGraphKernelNodePortProgrammatic;         |
-+---------------------------------------------------------------------+---------------------------------------------------------------------+
-| | cudaLaunchAttribute attribute;                                    | | cudaGraphEdgeData edgeData;                                       |
-| | attribute.id = cudaLaunchAttributeProgrammaticEvent;              | | edgeData.type = cudaGraphDependencyTypeProgrammatic;              |
-| | attribute.val.programmaticEvent.triggerAtBlockStart = 1;          | | edgeData.from_port = cudaGraphKernelNodePortLaunchCompletion;     |
-+---------------------------------------------------------------------+---------------------------------------------------------------------+
+  +---------------------------------------------------------------------+---------------------------------------------------------------------+
+  | Stream Code                                                         | Graph Edge                                                          |
+  +=====================================================================+=====================================================================+
+  | | cudaLaunchAttribute attribute;                                    | | cudaGraphEdgeData edgeData;                                       |
+  | | attribute.id = cudaLaunchAttributeProgrammaticStreamSerialization;| | edgeData.type = cudaGraphDependencyTypeProgrammatic;              |
+  | | attribute.val.programmaticStreamSerializationAllowed = 1;         | | edgeData.from_port = cudaGraphKernelNodePortProgrammatic;         |
+  +---------------------------------------------------------------------+---------------------------------------------------------------------+
+  | | cudaLaunchAttribute attribute;                                    | | cudaGraphEdgeData edgeData;                                       |
+  | | attribute.id = cudaLaunchAttributeProgrammaticEvent;              | | edgeData.type = cudaGraphDependencyTypeProgrammatic;              |
+  | | attribute.val.programmaticEvent.triggerAtBlockStart = 0;          | | edgeData.from_port = cudaGraphKernelNodePortProgrammatic;         |
+  +---------------------------------------------------------------------+---------------------------------------------------------------------+
+  | | cudaLaunchAttribute attribute;                                    | | cudaGraphEdgeData edgeData;                                       |
+  | | attribute.id = cudaLaunchAttributeProgrammaticEvent;              | | edgeData.type = cudaGraphDependencyTypeProgrammatic;              |
+  | | attribute.val.programmaticEvent.triggerAtBlockStart = 1;          | | edgeData.from_port = cudaGraphKernelNodePortLaunchCompletion;     |
+  +---------------------------------------------------------------------+---------------------------------------------------------------------+
 
 Graphs
 ======
@@ -517,15 +517,15 @@ This is exactly Vulkan pipeline dependencies: edge data is defined by an outgoin
 port, and a type. This is just Vulkan execution scopes and how they are grouped: like a memory copy
 could map be something like a buffer upload waited on by a vertex shader:
 
-+-----------+-------------------------+---------------------------------------------------------------------+
-| CUDA Name | Vulkan Equivalent Name  | Vulkan Data Value                                                   |
-+===========+=========================+=====================================================================+
-|  type     | VkAccessFlags           | VK_ACCESS_MEMORY_WRITE_BIT                                          |
-+-----------+-------------------------+---------------------------------------------------------------------+
-|  outgoing | VkPipelineStageFlagBits | VK_PIPELINE_STAGE_2_TRANSFER_BIT                                    |
-+-----------+-------------------------+---------------------------------------------------------------------+
-|  incoming | VkPipelineStageFlagBits | VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT                                |
-+-----------+-------------------------+---------------------------------------------------------------------+
+  +-----------+-------------------------+---------------------------------------------------------------------+
+  | CUDA Name | Vulkan Equivalent Name  | Vulkan Data Value                                                   |
+  +===========+=========================+=====================================================================+
+  |  type     | VkAccessFlags           | VK_ACCESS_MEMORY_WRITE_BIT                                          |
+  +-----------+-------------------------+---------------------------------------------------------------------+
+  |  outgoing | VkPipelineStageFlagBits | VK_PIPELINE_STAGE_2_TRANSFER_BIT                                    |
+  +-----------+-------------------------+---------------------------------------------------------------------+
+  |  incoming | VkPipelineStageFlagBits | VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT                                |
+  +-----------+-------------------------+---------------------------------------------------------------------+
 
 Where the 'ports' are Vulkan 'synchronisation scopes', and the 'type' defines the access scope [#]_
 (although I am not sure what direction incoming and outgoing are, as it depends on how you consider
@@ -808,9 +808,62 @@ There are limitations on such 'device graphs' that do not affect 'host graphs':
 
 Instantiating device graphs also has requirements:
 
+- Nodes can only be kernels, memcpy and memset, and child graphs, and must all reside on one device.
+- Dynamic Parallelism is not permitted; Cooperative Launches are permitted if MPS is not in use.
+- Copies must only involve device memory or pinned, device mapped, host memory, and cannot involve
+  cuda arrays.
+- Both operands must be accessible from the current device at instantiation time (note that the copy
+  will be performed by the device where the graph resides, whether or not the targeted memory is on
+  another device.
+
+Before a graph can be launched from a device, it must be uploaded
+
+- Explicitly with ``cudaGraphUpload``
+- During instantiation with ``cudaGraphInstantiateWithParams``
+- Implicitly by first launching the graph from the host.
+
+Graph updates must be performed on the host and then re-uploaded. Launching a device graph while
+updates are being applied is undefined (unlike with host graphs).
+
+Launches
+^^^^^^^^
+
+Device graph launches will happen per-thread, and since graph launches cannot be concurrent, it is
+up to the user to select a thread from which the launch will happen.
+
+They cannot use regular streams, instead having to use one of a set of named streams, each of which
+defines a specific launch mode.
+
+  +---------------------------------------+-------------------------+
+  | Stream                                | Launch Mode             |
+  +=======================================+=========================+
+  | cudaStreamGraphFireAndForget          | Fire and forget launch  |
+  +---------------------------------------+-------------------------+
+  | cudaStreamGraphTailLaunch             | Tail launch             |
+  +---------------------------------------+-------------------------+
+  | cudaStreamGraphFireAndForgetAsSibling | Sibling launch          |
+  +---------------------------------------+-------------------------+
+
+Fire and forget launches run independently of the calling graph. A graph can have up to 120 such
+launches during its execution with the total resetting between launches of the parent.
+
+When considering graph execution, the docs want you to understand *execution environments*. This is
+a fancy way to say "if A launches B, A is only complete when B is complete": B's subgraph can be
+considered as a single node on A's work tree. B is a part of the work scope of A [#]_.
+
+The stream environment is then the top level work scope: a stream launches a graph, once everything
+in the graph is complete, the work work item in the stream can start.
+
+So each level of graph launching is basically encapsulated by a single node: the graph launched by
+the stream can be considered a single work item in the stream, each child graph launched by a graph
+can be considered a single node in the parent's work tree.
+
+.. [#] There are some pretty pictures which give a more visual representation.
+   https://docs.nvidia.com/cuda/cuda-c-programming-guide/#graph-execution-environments
+
+
 Meta Info
 =========
-
 
 Bookmark
 --------

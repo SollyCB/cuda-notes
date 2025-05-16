@@ -645,6 +645,7 @@ another thread (unclear if this means that the work is always done on the initia
 the work could be handed to someone else? Unclear if this matters at all, or if people rely on
 either of these cases).</p>
 <p>Synchronisation of an async operation has the following scopes, which are intuitive:</p>
+<blockquote>
 <table>
 <thead>
 <tr><th class="head"><p>Thread scope</p></th>
@@ -666,10 +667,12 @@ either of these cases).</p>
 </tr>
 </tbody>
 </table>
+</blockquote>
 </section>
 <section id="compute-capability">
 <h2>Compute Capability</h2>
 <p>The names of the Nvidia arches and what 'compute capability' they map to.</p>
+<blockquote>
 <table>
 <thead>
 <tr><th class="head"><p>Major Revision Number</p></th>
@@ -697,7 +700,9 @@ either of these cases).</p>
 </tr>
 </tbody>
 </table>
+</blockquote>
 <p>Some incremental thing that I am just noting for the completeness and pedanticness of it all.</p>
+<blockquote>
 <table>
 <thead>
 <tr><th class="head"><p>Compute Capability</p></th>
@@ -712,6 +717,7 @@ either of these cases).</p>
 </tr>
 </tbody>
 </table>
+</blockquote>
 <p>Compute capability is not the same as cuda version, although some cuda versions will stop supporting older arches.</p>
 </section>
 <section id="programming-interface">
@@ -786,6 +792,7 @@ optimized for texture fetches. Linear memory is allocated from a unified address
 allocations can reference eachother via pointers (so just the x64 contiguous block of virtual pages
 type shit).</p>
 <p>Per arch address spaces:</p>
+<blockquote>
 <table>
 <thead>
 <tr><th class="head"></th>
@@ -807,6 +814,7 @@ type shit).</p>
 </tr>
 </tbody>
 </table>
+</blockquote>
 <p><span class="docutils literal">cudaMallocPitch</span> and <span class="docutils literal">cudaMalloc3D</span> ensure alignment requirements for 2D or 3D array memory
 copies, improving performance.</p>
 <p><span class="docutils literal">cudaMemcpy&lt;To|From&gt;Symbol</span> facilitate the use of constant and global memory spaces, which are
@@ -895,6 +903,7 @@ fence's doamin: <span class="docutils literal">thread_scope_system</span> must b
 <span class="docutils literal">thread_scope_device</span>, kernels will default to ID 0, so backwards compatibility is not broken.</p>
 <section id="using-domains">
 <h3>Using Domains</h3>
+<blockquote>
 <table>
 <tbody>
 <tr><td><p><span class="docutils literal">cudaLaunchAttributeMemSyncDomain</span></p></td>
@@ -911,6 +920,7 @@ fence's doamin: <span class="docutils literal">thread_scope_system</span> must b
 </tr>
 </tbody>
 </table>
+</blockquote>
 <p><span class="docutils literal">cudaLaunchMemSyncDomainDefault</span> and <span class="docutils literal">cudaLaunchMemSyncDomainRemote</span> are logical domains. They
 allow, for instance, a library to logically separate its kernels without having to consider the
 environment that might be going on around it. Then user code can map logical domains to physical
@@ -1048,6 +1058,7 @@ does not call the explicit signal, it is implicitly called when the kernel compl
 <p>Concurrency is not guaranteed, only being applied opportunistically.</p>
 <section id="use-with-graphs">
 <h3>Use with graphs</h3>
+<blockquote>
 <table>
 <thead>
 <tr><th class="head"><p>Stream Code</p></th>
@@ -1096,6 +1107,7 @@ does not call the explicit signal, it is implicitly called when the kernel compl
 </tr>
 </tbody>
 </table>
+</blockquote>
 </section>
 </section>
 <section id="graphs">
@@ -1139,6 +1151,7 @@ overhead.</p>
 <p>This is exactly Vulkan pipeline dependencies: edge data is defined by an outgoing port, an incoming
 port, and a type. This is just Vulkan execution scopes and how they are grouped: like a memory copy
 could map be something like a buffer upload waited on by a vertex shader:</p>
+<blockquote>
 <table>
 <thead>
 <tr><th class="head"><p>CUDA Name</p></th>
@@ -1161,6 +1174,7 @@ could map be something like a buffer upload waited on by a vertex shader:</p>
 </tr>
 </tbody>
 </table>
+</blockquote>
 <p>Where the 'ports' are Vulkan 'synchronisation scopes', and the 'type' defines the access scope <a class="brackets" href="#footnote-2" id="footnote-reference-2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a>
 (although I am not sure what direction incoming and outgoing are, as it depends on how you consider
 the direction that the edges are pointing in).</p>
@@ -1365,6 +1379,73 @@ by node is impractical.</p>
 </code><small class="ln"> 7 </small><code data-lineno=" 7 ">cudaGraphExecEventWaitNodeSetEvent()
 </code><small class="ln"> 8 </small><code data-lineno=" 8 ">cudaGraphExecExternalSemaphoresSignalNodeSetParams()
 </code><small class="ln"> 9 </small><code data-lineno=" 9 ">cudaGraphExecExternalSemaphoresWaitNodeSetParams()</code></pre>
+<p>Individual nodes can also be enabled or disabled, enabling the creation of graphs which contain a
+superset of some desired functionality, which can have nops swapped into in order to create the
+exact subset of work that an app desires at any given time.</p>
+</section>
+</section>
+<section id="usage-info">
+<h3>Usage Info</h3>
+<p><span class="docutils literal">cudaGraph_t</span> objects are not internally synchronized.</p>
+<p><span class="docutils literal">cudaGraphExec_t</span> objects cannot run concurrently with itself.</p>
+<p>Graph execution happens in streams but for ordering only, creating no contraints on internal
+parallelism on the graph or where its nodes can execute.</p>
+</section>
+<section id="device-graphs">
+<h3>Device Graphs</h3>
+<p>On systems supporting unified addressing (discussed later), graphs can be launched from the device,
+enabling data dependent decisions without the round trip from host to device.</p>
+<p>There are limitations on such 'device graphs' that do not affect 'host graphs':</p>
+<ul class="simple">
+<li><p>Only graphs explicity created as device graphs can be launched from the device (as well as from
+the host).</p></li>
+<li><p>Device graphs cannot be launched simultaneously: such launches from the device will return an
+error code, such launches performed from the host and device simultaneously is undefined.</p></li>
+</ul>
+<p>Instantiating device graphs also has requirements:</p>
+<ul class="simple">
+<li><p>Nodes can only be kernels, memcpy and memset, and child graphs, and must all reside on one device.</p></li>
+<li><p>Dynamic Parallelism is not permitted; Cooperative Launches are permitted if MPS is not in use.</p></li>
+<li><p>Copies must only involve device memory or pinned, device mapped, host memory, and cannot involve
+cuda arrays.</p></li>
+<li><p>Both operands must be accessible from the current device at instantiation time (note that the copy
+will be performed by the device where the graph resides, whether or not the targeted memory is on
+another device.</p></li>
+</ul>
+<p>Before a graph can be launched from a device, it must be uploaded</p>
+<ul class="simple">
+<li><p>Explicitly with <span class="docutils literal">cudaGraphUpload</span></p></li>
+<li><p>During instantiation with <span class="docutils literal">cudaGraphInstantiateWithParams</span></p></li>
+<li><p>Implicitly by first launching the graph from the host.</p></li>
+</ul>
+<p>Graph updates must be performed on the host and then re-uploaded. Launching a device graph while
+updates are being applied is undefined (unlike with host graphs).</p>
+<section id="launches">
+<h4>Launches</h4>
+<p>Device graph launches will happen per-thread, and since graph launches cannot be concurrent, it is
+up to the user to select a thread from which the launch will happen.</p>
+<p>They cannot use regular streams, instead having to use one of a set of named streams, each of which
+defines a specific launch mode.</p>
+<blockquote>
+<table>
+<thead>
+<tr><th class="head"><p>Stream</p></th>
+<th class="head"><p>Launch Mode</p></th>
+</tr>
+</thead>
+<tbody>
+<tr><td><p>cudaStreamGraphFireAndForget</p></td>
+<td><p>Fire and forget launch</p></td>
+</tr>
+<tr><td><p>cudaStreamGraphTailLaunch</p></td>
+<td><p>Tail launch</p></td>
+</tr>
+<tr><td><p>cudaStreamGraphFireAndForgetAsSibling</p></td>
+<td><p>Sibling launch</p></td>
+</tr>
+</tbody>
+</table>
+</blockquote>
 </section>
 </section>
 </section>

@@ -69,6 +69,8 @@ the work could be handed to someone else? Unclear if this matters at all, or if 
 either of these cases).
 .sp
 Synchronisation of an async operation has the following scopes, which are intuitive:
+.INDENT 0.0
+.INDENT 3.5
 .TS
 box center;
 l|l.
@@ -102,9 +104,13 @@ T}	T{
 All or any CUDA or CPU threads in the same system as the initiating thread synchronizes.
 T}
 .TE
+.UNINDENT
+.UNINDENT
 .SH COMPUTE CAPABILITY
 .sp
 The names of the Nvidia arches and what \(aqcompute capability\(aq they map to.
+.INDENT 0.0
+.INDENT 3.5
 .TS
 box center;
 l|l.
@@ -150,8 +156,12 @@ T}	T{
 NVIDIA Kepler GPU Architecture
 T}
 .TE
+.UNINDENT
+.UNINDENT
 .sp
 Some incremental thing that I am just noting for the completeness and pedanticness of it all.
+.INDENT 0.0
+.INDENT 3.5
 .TS
 box center;
 l|l|l.
@@ -171,6 +181,8 @@ T}	T{
 NVIDIA Volta GPU Architecture
 T}
 .TE
+.UNINDENT
+.UNINDENT
 .sp
 Compute capability is not the same as cuda version, although some cuda versions will stop supporting older arches.
 .SH PROGRAMMING INTERFACE
@@ -248,6 +260,8 @@ allocations can reference eachother via pointers (so just the x64 contiguous blo
 type shit).
 .sp
 Per arch address spaces:
+.INDENT 0.0
+.INDENT 3.5
 .TS
 box center;
 l|l|l|l.
@@ -280,6 +294,8 @@ T}	T{
 up to 48bit
 T}
 .TE
+.UNINDENT
+.UNINDENT
 .sp
 \fBcudaMallocPitch\fP and \fBcudaMalloc3D\fP ensure alignment requirements for 2D or 3D array memory
 copies, improving performance.
@@ -386,6 +402,8 @@ is insufficient to use \fBthread_scope_device\fP to order operations between ker
 fence\(aqs doamin: \fBthread_scope_system\fP must be used instead. While this changes the definition of
 \fBthread_scope_device\fP, kernels will default to ID 0, so backwards compatibility is not broken.
 .SS Using Domains
+.INDENT 0.0
+.INDENT 3.5
 .TS
 box center;
 l|l.
@@ -413,6 +431,8 @@ T}	T{
 Isolate remote memory traffic from local
 T}
 .TE
+.UNINDENT
+.UNINDENT
 .sp
 \fBcudaLaunchMemSyncDomainDefault\fP and \fBcudaLaunchMemSyncDomainRemote\fP are logical domains. They
 allow, for instance, a library to logically separate its kernels without having to consider the
@@ -576,6 +596,8 @@ does not call the explicit signal, it is implicitly called when the kernel compl
 .sp
 Concurrency is not guaranteed, only being applied opportunistically.
 .SS Use with graphs
+.INDENT 0.0
+.INDENT 3.5
 .TS
 box center;
 l|l.
@@ -627,6 +649,8 @@ edgeData.from_port = cudaGraphKernelNodePortLaunchCompletion;
 .fi
 T}
 .TE
+.UNINDENT
+.UNINDENT
 .SH GRAPHS
 .sp
 Resemble Vulkan subpasses, where you program in the depedency edges, and the driver inserts in the
@@ -682,6 +706,8 @@ child graph
 This is exactly Vulkan pipeline dependencies: edge data is defined by an outgoing port, an incoming
 port, and a type. This is just Vulkan execution scopes and how they are grouped: like a memory copy
 could map be something like a buffer upload waited on by a vertex shader:
+.INDENT 0.0
+.INDENT 3.5
 .TS
 box center;
 l|l|l.
@@ -717,6 +743,8 @@ T}	T{
 VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT
 T}
 .TE
+.UNINDENT
+.UNINDENT
 .sp
 Where the \(aqports\(aq are Vulkan \(aqsynchronisation scopes\(aq, and the \(aqtype\(aq defines the access scope [2]
 (although I am not sure what direction incoming and outgoing are, as it depends on how you consider
@@ -974,6 +1002,98 @@ Limitations). Each update type has its own dedicated API call
  8 cudaGraphExecExternalSemaphoresSignalNodeSetParams()
  9 cudaGraphExecExternalSemaphoresWaitNodeSetParams()
 .EE
+.UNINDENT
+.UNINDENT
+.sp
+Individual nodes can also be enabled or disabled, enabling the creation of graphs which contain a
+superset of some desired functionality, which can have nops swapped into in order to create the
+exact subset of work that an app desires at any given time.
+.SS Usage Info
+.sp
+\fBcudaGraph_t\fP objects are not internally synchronized.
+.sp
+\fBcudaGraphExec_t\fP objects cannot run concurrently with itself.
+.sp
+Graph execution happens in streams but for ordering only, creating no contraints on internal
+parallelism on the graph or where its nodes can execute.
+.SS Device Graphs
+.sp
+On systems supporting unified addressing (discussed later), graphs can be launched from the device,
+enabling data dependent decisions without the round trip from host to device.
+.sp
+There are limitations on such \(aqdevice graphs\(aq that do not affect \(aqhost graphs\(aq:
+.INDENT 0.0
+.IP \(bu 2
+Only graphs explicity created as device graphs can be launched from the device (as well as from
+the host).
+.IP \(bu 2
+Device graphs cannot be launched simultaneously: such launches from the device will return an
+error code, such launches performed from the host and device simultaneously is undefined.
+.UNINDENT
+.sp
+Instantiating device graphs also has requirements:
+.INDENT 0.0
+.IP \(bu 2
+Nodes can only be kernels, memcpy and memset, and child graphs, and must all reside on one device.
+.IP \(bu 2
+Dynamic Parallelism is not permitted; Cooperative Launches are permitted if MPS is not in use.
+.IP \(bu 2
+Copies must only involve device memory or pinned, device mapped, host memory, and cannot involve
+cuda arrays.
+.IP \(bu 2
+Both operands must be accessible from the current device at instantiation time (note that the copy
+will be performed by the device where the graph resides, whether or not the targeted memory is on
+another device.
+.UNINDENT
+.sp
+Before a graph can be launched from a device, it must be uploaded
+.INDENT 0.0
+.IP \(bu 2
+Explicitly with \fBcudaGraphUpload\fP
+.IP \(bu 2
+During instantiation with \fBcudaGraphInstantiateWithParams\fP
+.IP \(bu 2
+Implicitly by first launching the graph from the host.
+.UNINDENT
+.sp
+Graph updates must be performed on the host and then re\-uploaded. Launching a device graph while
+updates are being applied is undefined (unlike with host graphs).
+.SS Launches
+.sp
+Device graph launches will happen per\-thread, and since graph launches cannot be concurrent, it is
+up to the user to select a thread from which the launch will happen.
+.sp
+They cannot use regular streams, instead having to use one of a set of named streams, each of which
+defines a specific launch mode.
+.INDENT 0.0
+.INDENT 3.5
+.TS
+box center;
+l|l.
+T{
+Stream
+T}	T{
+Launch Mode
+T}
+_
+T{
+cudaStreamGraphFireAndForget
+T}	T{
+Fire and forget launch
+T}
+_
+T{
+cudaStreamGraphTailLaunch
+T}	T{
+Tail launch
+T}
+_
+T{
+cudaStreamGraphFireAndForgetAsSibling
+T}	T{
+Sibling launch
+T}
+.TE
 .UNINDENT
 .UNINDENT
 .SH META INFO
