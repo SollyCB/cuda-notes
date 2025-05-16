@@ -991,76 +991,6 @@ initiated in the order that it appears in the stream, but does not necessarily c
 in which it was submitted.</p>
 <p>I am going with &quot;the default stream is a regular stream, and per-thread default streams are also
 just streams, but they are used when a stream is not specified per-thread, not globally&quot;.</p>
-</section>
-</section>
-<section id="async-concurrent-execution-1">
-<h2>Async Concurrent Execution</h2>
-<p>Independent tasks which can operate concurrently:</p>
-<ul class="simple">
-<li><p>Computation on the host;</p></li>
-<li><p>Computation on the device;</p></li>
-<li><p>Memory transfers from the host to the device;</p></li>
-<li><p>Memory transfers from the device to the host;</p></li>
-<li><p>Memory transfers within the memory of a given device;</p></li>
-<li><p>Memory transfers among devices.</p></li>
-</ul>
-<p>Operations which can be launched from the host, with control returned to the host before the
-operation has completed:</p>
-<ul class="simple">
-<li><p>Kernel launches;</p></li>
-<li><p>Memory copies within a single device’s memory;</p></li>
-<li><p>Memory copies from host to device of a memory block of 64 KB or less;</p></li>
-<li><p>Memory copies performed by functions that are suffixed with <span class="docutils literal">Async</span>;</p></li>
-<li><p>Memory set function calls.</p></li>
-</ul>
-<p>Note that:</p>
-<ul class="simple">
-<li><p><strong>``Async`` memory copies might also be synchronous if they involve host memory that is not
-page-locked.</strong></p></li>
-<li><p>Kernel launches are synchronous if hardware counters are collected via a profiler (Nsight, Visual
-Profiler) unless concurrent kernel profiling is enabled.</p></li>
-</ul>
-<section id="concurrent-kernels-1">
-<h3>Concurrent Kernels</h3>
-<p>Supported at 2.x and above, but:</p>
-<blockquote>
-<p>A kernel from one CUDA context cannot execute concurrently with a kernel from another CUDA context.
-The GPU may time slice to provide forward progress to each context. If a user wants to run kernels
-from multiple process simultaneously on the SM, one must enable MPS.</p>
-</blockquote>
-<p>Also kernels with lots of memory are less likely to run concurrently (intuitive).</p>
-<p>Memory copies can happen async with kernel execution, resembling Vulkan dedicated transfer queues.</p>
-<p>Memory download and upload can also be overlapped, but involved host memory must be pinned.</p>
-</section>
-</section>
-<section id="streams-1">
-<h2>Streams</h2>
-<p>Streams are just Vulkan command buffers: you submit them in sequence, but they can execute
-concurrently, out of order with eachother, etc. Commands start executing when their dependencies are
-met, which can be within stream or cross stream. Work on a stream can overlap according the rules
-described above.</p>
-<p>Calling <span class="docutils literal">cudaStreamDestroy</span> while the device is still chewing through it will cause the function
-to immediately return with the stream's resources being cleaned up automatically later.</p>
-<section id="default-stream-1">
-<h3>Default Stream</h3>
-<p>Not specifying a stream or passing 0 will use the default stream. This doesn't seem any different
-just basically using a single command buffer for all your shit, but I might wrong because</p>
-<blockquote>
-<p>For code that is compiled using the --default-stream per-thread compilation flag (or that defines
-the CUDA_API_PER_THREAD_DEFAULT_STREAM macro before including CUDA headers (cuda.h and
-cuda_runtime.h)), the default stream is a regular stream and each host thread has its own default
-stream.</p>
-</blockquote>
-<p>which could imply that the default stream otherwise is not regular? But an earlier quote</p>
-<blockquote>
-<p>Kernel launches... are issued to the default stream. They are therefore executed in order.</p>
-</blockquote>
-<p>in using 'therefore' implies that the default stream without the aforementioned switches is still a
-regular stream, and the &quot;executed in order&quot; only refers to the fact that work in a stream is
-initiated in the order that it appears in the stream, but does not necessarily complete in the order
-in which it was submitted.</p>
-<p>I am going with &quot;the default stream is a regular stream, and per-thread default streams are also
-just streams, but they are used when a stream is not specified per-thread, not globally&quot;.</p>
 <p>If code is compiled without specifying a <span class="docutils literal"><span class="pre">--default-stream</span></span>, <span class="docutils literal"><span class="pre">--default-stream</span> legacy</span> is
 assumed, which causes each device to have a single <em>NULL stream</em>, shared by all host threads, which
 has implicit synchronisation (see below).</p>
@@ -1248,6 +1178,74 @@ to have some potential gotchas to do with edges that do not wait for full comple
 will be expanded when I have more info, which I assume I will get once I read the stream capture
 section).</p>
 </section>
+</section>
+<section id="graph-api">
+<h3>Graph API</h3>
+<p>Creating a graph with the api seems trivial and intuitive:</p>
+<pre class="code C literal-block"><small class="ln">1 </small><code data-lineno="1 "><span class="name">cudaGraphCreate</span><span class="punctuation">(</span><span class="operator">&amp;</span><span class="name">graph</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="literal number integer">0</span><span class="punctuation">);</span><span class="whitespace">
+</span></code><small class="ln">2 </small><code data-lineno="2 "><span class="whitespace"></span><span class="name">cudaGraphAddKernelNode</span><span class="punctuation">(</span><span class="operator">&amp;</span><span class="name">a</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="name">graph</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="literal number integer">0</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="literal number integer">0</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="operator">&amp;</span><span class="name">node_info</span><span class="punctuation">);</span><span class="whitespace">
+</span></code><small class="ln">3 </small><code data-lineno="3 "><span class="whitespace"></span><span class="name">cudaGraphAddKernelNode</span><span class="punctuation">(</span><span class="operator">&amp;</span><span class="name">b</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="name">graph</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="literal number integer">0</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="literal number integer">0</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="operator">&amp;</span><span class="name">node_info</span><span class="punctuation">);</span><span class="whitespace">
+</span></code><small class="ln">4 </small><code data-lineno="4 "><span class="whitespace"></span><span class="name">cudaGraphAddDependencies</span><span class="punctuation">(</span><span class="name">graph</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="operator">&amp;</span><span class="name">a</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="operator">&amp;</span><span class="name">b</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="literal number integer">1</span><span class="punctuation">);</span><span class="whitespace"> </span><span class="comment single">// A-&gt;B</span></code></pre>
+</section>
+<section id="stream-capture">
+<h3>Stream Capture</h3>
+<p>Stream capture is literally Vulkan command buffers: calling <span class="docutils literal">cudaStreamBeginCapture</span> before
+enqueueing work to a stream puts the it in a recording mode which builds an internal graph. This
+resembles the Vulkan command buffer lifecycle (record, then submit, as opposed to typical cuda
+streams which are actually streaming work as it is put in the stream). Calling
+<span class="docutils literal">cudaStreamEndCapture</span> is the <span class="docutils literal">vkEndCommandBuffer</span></p>
+<p>Any stream can be captured except the NULL stream.</p>
+<p>Use <span class="docutils literal">cudaStreamBeginCaptureToGraph</span> to use a user declared graph rather than an internal one.</p>
+</section>
+<section id="captured-events">
+<h3>Captured Events</h3>
+<p>If waiting on an event in a captured stream, that event must have been recorded into the same
+capture graph (best clarified by the code example below).</p>
+<p>If another stream waits on an event which was recorded in a captured stream, that stream becomes a
+captured stream, and is now a part of the other captured stream's graph.</p>
+<p>An event recorded on a captured stream (the docs call this a <em>captured event</em>) can be seen as
+representing some set of nodes in the graph. So when another stream waits on a captured event, it is
+waiting on that set of nodes.</p>
+<p>When other streams become a part of a captured graph, <span class="docutils literal">cudaStreamEndCapture</span> must still be called
+on the original stream (docs call this the <em>origin stream</em>).</p>
+<p>Other streams must be joined with the origin stream before capture is ended (this means that the
+origin stream must wait for other streams to complete - see the below code example).</p>
+<pre class="code C literal-block"><small class="ln"> 1 </small><code data-lineno=" 1 "><span class="comment single">// stream1 is the origin stream
+</span></code><small class="ln"> 2 </small><code data-lineno=" 2 "><span class="comment single"></span><span class="name">cudaStreamBeginCapture</span><span class="punctuation">(</span><span class="name">stream1</span><span class="punctuation">);</span><span class="whitespace">
+</span></code><small class="ln"> 3 </small><code data-lineno=" 3 "><span class="whitespace">
+</span></code><small class="ln"> 4 </small><code data-lineno=" 4 "><span class="whitespace"></span><span class="name">kernel_A</span><span class="operator">&lt;&lt;&lt;</span><span class="whitespace"> </span><span class="punctuation">...,</span><span class="whitespace"> </span><span class="name">stream1</span><span class="whitespace"> </span><span class="operator">&gt;&gt;&gt;</span><span class="punctuation">(...);</span><span class="whitespace">
+</span></code><small class="ln"> 5 </small><code data-lineno=" 5 "><span class="whitespace">
+</span></code><small class="ln"> 6 </small><code data-lineno=" 6 "><span class="whitespace"></span><span class="comment single">// Event is captured by stream1's graph
+</span></code><small class="ln"> 7 </small><code data-lineno=" 7 "><span class="comment single"></span><span class="name">cudaEventRecord</span><span class="punctuation">(</span><span class="name">event1</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="name">stream1</span><span class="punctuation">);</span><span class="whitespace">
+</span></code><small class="ln"> 8 </small><code data-lineno=" 8 "><span class="whitespace">
+</span></code><small class="ln"> 9 </small><code data-lineno=" 9 "><span class="whitespace"></span><span class="comment single">// stream2 enters the graph
+</span></code><small class="ln">10 </small><code data-lineno="10 "><span class="comment single"></span><span class="name">cudaStreamWaitEvent</span><span class="punctuation">(</span><span class="name">stream2</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="name">event1</span><span class="punctuation">);</span><span class="whitespace">
+</span></code><small class="ln">11 </small><code data-lineno="11 "><span class="whitespace">
+</span></code><small class="ln">12 </small><code data-lineno="12 "><span class="whitespace"></span><span class="comment single">// kernel_B is synced with kernel_A according to the rules in Concurrent Kernels
+</span></code><small class="ln">13 </small><code data-lineno="13 "><span class="comment single"></span><span class="name">kernel_B</span><span class="operator">&lt;&lt;&lt;</span><span class="whitespace"> </span><span class="punctuation">...,</span><span class="whitespace"> </span><span class="name">stream1</span><span class="whitespace"> </span><span class="operator">&gt;&gt;&gt;</span><span class="punctuation">(...);</span><span class="whitespace">
+</span></code><small class="ln">14 </small><code data-lineno="14 "><span class="whitespace">
+</span></code><small class="ln">15 </small><code data-lineno="15 "><span class="whitespace"></span><span class="comment single">// kernel_C will wait on kernel_A as event1 represents its completion
+</span></code><small class="ln">16 </small><code data-lineno="16 "><span class="comment single"></span><span class="name">kernel_C</span><span class="operator">&lt;&lt;&lt;</span><span class="whitespace"> </span><span class="punctuation">...,</span><span class="whitespace"> </span><span class="name">stream2</span><span class="whitespace"> </span><span class="operator">&gt;&gt;&gt;</span><span class="punctuation">(...);</span><span class="whitespace">
+</span></code><small class="ln">17 </small><code data-lineno="17 "><span class="whitespace">
+</span></code><small class="ln">18 </small><code data-lineno="18 "><span class="whitespace"></span><span class="comment single">// Join stream1 and stream2, i.e. make stream1 wait for stream2 to idle before ending capture
+</span></code><small class="ln">19 </small><code data-lineno="19 "><span class="comment single"></span><span class="name">cudaEventRecord</span><span class="punctuation">(</span><span class="name">event2</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="name">stream2</span><span class="punctuation">);</span><span class="whitespace">
+</span></code><small class="ln">20 </small><code data-lineno="20 "><span class="whitespace"></span><span class="name">cudaStreamWaitEvent</span><span class="punctuation">(</span><span class="name">stream1</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="name">event2</span><span class="punctuation">);</span><span class="whitespace">
+</span></code><small class="ln">21 </small><code data-lineno="21 "><span class="whitespace">
+</span></code><small class="ln">22 </small><code data-lineno="22 "><span class="whitespace"></span><span class="comment single">// More work can be done on stream1, stream2 is still idle
+</span></code><small class="ln">23 </small><code data-lineno="23 "><span class="comment single"></span><span class="name">kernel_D</span><span class="operator">&lt;&lt;&lt;</span><span class="whitespace"> </span><span class="punctuation">...,</span><span class="whitespace"> </span><span class="name">stream1</span><span class="whitespace"> </span><span class="operator">&gt;&gt;&gt;</span><span class="punctuation">(...);</span><span class="whitespace">
+</span></code><small class="ln">24 </small><code data-lineno="24 "><span class="whitespace">
+</span></code><small class="ln">25 </small><code data-lineno="25 "><span class="whitespace"></span><span class="comment single">// End capture in the origin stream, since
+</span></code><small class="ln">26 </small><code data-lineno="26 "><span class="comment single"></span><span class="name">cudaStreamEndCapture</span><span class="punctuation">(</span><span class="name">stream1</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="operator">&amp;</span><span class="name">graph</span><span class="punctuation">);</span><span class="whitespace">
+</span></code><small class="ln">27 </small><code data-lineno="27 "><span class="whitespace">
+</span></code><small class="ln">28 </small><code data-lineno="28 "><span class="whitespace"></span><span class="comment single">// stream1 and stream2 no longer in capture mode</span></code></pre>
+<p>The resulting graph looks like:</p>
+<pre class="code C literal-block"><small class="ln">1 </small><code data-lineno="1 "><span class="whitespace">                                               </span><span class="name">A</span><span class="whitespace">
+</span></code><small class="ln">2 </small><code data-lineno="2 "><span class="whitespace">                                              </span><span class="operator">/</span><span class="whitespace"> </span>\
+</code><small class="ln">3 </small><code data-lineno="3 "><span class="whitespace">                                             </span><span class="name">v</span><span class="whitespace">   </span><span class="name">v</span><span class="whitespace">
+</span></code><small class="ln">4 </small><code data-lineno="4 "><span class="whitespace">                                             </span><span class="name">B</span><span class="whitespace">   </span><span class="name">C</span><span class="whitespace">
+</span></code><small class="ln">5 </small><code data-lineno="5 "><span class="whitespace">                                              </span><span class="error">\</span><span class="whitespace"> </span><span class="operator">/</span><span class="whitespace">
+</span></code><small class="ln">6 </small><code data-lineno="6 "><span class="whitespace">                                               </span><span class="name">v</span><span class="whitespace">
+</span></code><small class="ln">7 </small><code data-lineno="7 "><span class="whitespace">                                               </span><span class="name">D</span></code></pre>
 </section>
 </section>
 <section id="meta-info">

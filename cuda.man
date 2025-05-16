@@ -519,100 +519,6 @@ in which it was submitted.
 .sp
 I am going with \(dqthe default stream is a regular stream, and per\-thread default streams are also
 just streams, but they are used when a stream is not specified per\-thread, not globally\(dq.
-.SH ASYNC CONCURRENT EXECUTION
-.sp
-Independent tasks which can operate concurrently:
-.INDENT 0.0
-.IP \(bu 2
-Computation on the host;
-.IP \(bu 2
-Computation on the device;
-.IP \(bu 2
-Memory transfers from the host to the device;
-.IP \(bu 2
-Memory transfers from the device to the host;
-.IP \(bu 2
-Memory transfers within the memory of a given device;
-.IP \(bu 2
-Memory transfers among devices.
-.UNINDENT
-.sp
-Operations which can be launched from the host, with control returned to the host before the
-operation has completed:
-.INDENT 0.0
-.IP \(bu 2
-Kernel launches;
-.IP \(bu 2
-Memory copies within a single device’s memory;
-.IP \(bu 2
-Memory copies from host to device of a memory block of 64 KB or less;
-.IP \(bu 2
-Memory copies performed by functions that are suffixed with \fBAsync\fP;
-.IP \(bu 2
-Memory set function calls.
-.UNINDENT
-.sp
-Note that:
-.INDENT 0.0
-.IP \(bu 2
-\fB\(ga\(gaAsync\(ga\(ga memory copies might also be synchronous if they involve host memory that is not
-page\-locked.\fP
-.IP \(bu 2
-Kernel launches are synchronous if hardware counters are collected via a profiler (Nsight, Visual
-Profiler) unless concurrent kernel profiling is enabled.
-.UNINDENT
-.SS Concurrent Kernels
-.sp
-Supported at 2.x and above, but:
-.INDENT 0.0
-.INDENT 3.5
-A kernel from one CUDA context cannot execute concurrently with a kernel from another CUDA context.
-The GPU may time slice to provide forward progress to each context. If a user wants to run kernels
-from multiple process simultaneously on the SM, one must enable MPS.
-.UNINDENT
-.UNINDENT
-.sp
-Also kernels with lots of memory are less likely to run concurrently (intuitive).
-.sp
-Memory copies can happen async with kernel execution, resembling Vulkan dedicated transfer queues.
-.sp
-Memory download and upload can also be overlapped, but involved host memory must be pinned.
-.SH STREAMS
-.sp
-Streams are just Vulkan command buffers: you submit them in sequence, but they can execute
-concurrently, out of order with eachother, etc. Commands start executing when their dependencies are
-met, which can be within stream or cross stream. Work on a stream can overlap according the rules
-described above.
-.sp
-Calling \fBcudaStreamDestroy\fP while the device is still chewing through it will cause the function
-to immediately return with the stream\(aqs resources being cleaned up automatically later.
-.SS Default Stream
-.sp
-Not specifying a stream or passing 0 will use the default stream. This doesn\(aqt seem any different
-just basically using a single command buffer for all your shit, but I might wrong because
-.INDENT 0.0
-.INDENT 3.5
-For code that is compiled using the \-\-default\-stream per\-thread compilation flag (or that defines
-the CUDA_API_PER_THREAD_DEFAULT_STREAM macro before including CUDA headers (cuda.h and
-cuda_runtime.h)), the default stream is a regular stream and each host thread has its own default
-stream.
-.UNINDENT
-.UNINDENT
-.sp
-which could imply that the default stream otherwise is not regular? But an earlier quote
-.INDENT 0.0
-.INDENT 3.5
-Kernel launches... are issued to the default stream. They are therefore executed in order.
-.UNINDENT
-.UNINDENT
-.sp
-in using \(aqtherefore\(aq implies that the default stream without the aforementioned switches is still a
-regular stream, and the \(dqexecuted in order\(dq only refers to the fact that work in a stream is
-initiated in the order that it appears in the stream, but does not necessarily complete in the order
-in which it was submitted.
-.sp
-I am going with \(dqthe default stream is a regular stream, and per\-thread default streams are also
-just streams, but they are used when a stream is not specified per\-thread, not globally\(dq.
 .sp
 If code is compiled without specifying a \fB\-\-default\-stream\fP, \fB\-\-default\-stream legacy\fP is
 assumed, which causes each device to have a single \fINULL stream\fP, shared by all host threads, which
@@ -825,6 +731,99 @@ There is also some weirdness to do with getting the edge data using stream captu
 to have some potential gotchas to do with edges that do not wait for full completion (this section
 will be expanded when I have more info, which I assume I will get once I read the stream capture
 section).
+.SS Graph API
+.sp
+Creating a graph with the api seems trivial and intuitive:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+1 cudaGraphCreate(&graph, 0);
+2 cudaGraphAddKernelNode(&a, graph, 0, 0, &node_info);
+3 cudaGraphAddKernelNode(&b, graph, 0, 0, &node_info);
+4 cudaGraphAddDependencies(graph, &a, &b, 1); // A\->B
+.EE
+.UNINDENT
+.UNINDENT
+.SS Stream Capture
+.sp
+Stream capture is literally Vulkan command buffers: calling \fBcudaStreamBeginCapture\fP before
+enqueueing work to a stream puts the it in a recording mode which builds an internal graph. This
+resembles the Vulkan command buffer lifecycle (record, then submit, as opposed to typical cuda
+streams which are actually streaming work as it is put in the stream). Calling
+\fBcudaStreamEndCapture\fP is the \fBvkEndCommandBuffer\fP
+.sp
+Any stream can be captured except the NULL stream.
+.sp
+Use \fBcudaStreamBeginCaptureToGraph\fP to use a user declared graph rather than an internal one.
+.SS Captured Events
+.sp
+If waiting on an event in a captured stream, that event must have been recorded into the same
+capture graph (best clarified by the code example below).
+.sp
+If another stream waits on an event which was recorded in a captured stream, that stream becomes a
+captured stream, and is now a part of the other captured stream\(aqs graph.
+.sp
+An event recorded on a captured stream (the docs call this a \fIcaptured event\fP) can be seen as
+representing some set of nodes in the graph. So when another stream waits on a captured event, it is
+waiting on that set of nodes.
+.sp
+When other streams become a part of a captured graph, \fBcudaStreamEndCapture\fP must still be called
+on the original stream (docs call this the \fIorigin stream\fP).
+.sp
+Other streams must be joined with the origin stream before capture is ended (this means that the
+origin stream must wait for other streams to complete \- see the below code example).
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+ 1 // stream1 is the origin stream
+ 2 cudaStreamBeginCapture(stream1);
+ 3 
+ 4 kernel_A<<< \&..., stream1 >>>(...);
+ 5 
+ 6 // Event is captured by stream1\(aqs graph
+ 7 cudaEventRecord(event1, stream1);
+ 8 
+ 9 // stream2 enters the graph
+10 cudaStreamWaitEvent(stream2, event1);
+11 
+12 // kernel_B is synced with kernel_A according to the rules in Concurrent Kernels
+13 kernel_B<<< \&..., stream1 >>>(...);
+14 
+15 // kernel_C will wait on kernel_A as event1 represents its completion
+16 kernel_C<<< \&..., stream2 >>>(...);
+17 
+18 // Join stream1 and stream2, i.e. make stream1 wait for stream2 to idle before ending capture
+19 cudaEventRecord(event2, stream2);
+20 cudaStreamWaitEvent(stream1, event2);
+21 
+22 // More work can be done on stream1, stream2 is still idle
+23 kernel_D<<< \&..., stream1 >>>(...);
+24 
+25 // End capture in the origin stream, since
+26 cudaStreamEndCapture(stream1, &graph);
+27 
+28 // stream1 and stream2 no longer in capture mode
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+The resulting graph looks like:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+1                                                A
+2                                               / \e
+3                                              v   v
+4                                              B   C
+5                                               \e /
+6                                                v
+7                                                D
+.EE
+.UNINDENT
+.UNINDENT
 .SH META INFO
 .SS Bookmark
 .sp

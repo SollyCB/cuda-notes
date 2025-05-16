@@ -543,6 +543,131 @@ to have some potential gotchas to do with edges that do not wait for full comple
 will be expanded when I have more info, which I assume I will get once I read the stream capture
 section).
 
+Graph API
+---------
+
+Creating a graph with the api seems trivial and intuitive:
+
+.. code:: C
+  :number-lines:
+
+  cudaGraphCreate(&graph, 0);
+  cudaGraphAddKernelNode(&a, graph, 0, 0, &node_info);
+  cudaGraphAddKernelNode(&b, graph, 0, 0, &node_info);
+  cudaGraphAddDependencies(graph, &a, &b, 1); // A->B
+
+Stream Capture
+--------------
+
+Stream capture is literally Vulkan command buffers: calling ``cudaStreamBeginCapture`` before
+enqueueing work to a stream puts the it in a recording mode which builds an internal graph. This
+resembles the Vulkan command buffer lifecycle (record, then submit, as opposed to typical cuda
+streams which are actually streaming work as it is put in the stream). Calling
+``cudaStreamEndCapture`` is the ``vkEndCommandBuffer``
+
+Any stream can be captured except the NULL stream.
+
+Use ``cudaStreamBeginCaptureToGraph`` to use a user declared graph rather than an internal one.
+
+Captured Events
+---------------
+
+If waiting on an event in a captured stream, that event must have been recorded into the same
+capture graph (best clarified by the code example below).
+
+If another stream waits on an event which was recorded in a captured stream, that stream becomes a
+captured stream, and is now a part of the other captured stream's graph.
+
+An event recorded on a captured stream (the docs call this a *captured event*) can be seen as
+representing some set of nodes in the graph. So when another stream waits on a captured event, it is
+waiting on that set of nodes.
+
+When other streams become a part of a captured graph, ``cudaStreamEndCapture`` must still be called
+on the original stream (docs call this the *origin stream*).
+
+Other streams must be joined with the origin stream before capture is ended (this means that the
+origin stream must wait for other streams to complete - see the below code example).
+
+.. code:: C
+  :number-lines:
+
+  // stream1 is the origin stream
+  cudaStreamBeginCapture(stream1);
+
+  kernel_A<<< ..., stream1 >>>(...);
+
+  // Event is captured by stream1's graph
+  cudaEventRecord(event1, stream1);
+
+  // stream2 enters the graph
+  cudaStreamWaitEvent(stream2, event1);
+
+  // kernel_B is synced with kernel_A according to the rules in Concurrent Kernels
+  kernel_B<<< ..., stream1 >>>(...);
+
+  // kernel_C will wait on kernel_A as event1 represents its completion
+  kernel_C<<< ..., stream2 >>>(...);
+
+  // Join stream1 and stream2, i.e. make stream1 wait for stream2 to idle before ending capture
+  cudaEventRecord(event2, stream2);
+  cudaStreamWaitEvent(stream1, event2);
+
+  // More work can be done on stream1, stream2 is still idle
+  kernel_D<<< ..., stream1 >>>(...);
+
+  // End capture in the origin stream, since 
+  cudaStreamEndCapture(stream1, &graph);
+
+  // stream1 and stream2 no longer in capture mode
+
+The resulting graph looks like:
+
+.. code:: C
+  :number-lines:
+
+                                                 A
+                                                / \
+                                               v   v
+                                               B   C
+                                                \ /
+                                                 v
+                                                 D
+
+Note that when a stream leaves capture mode, the first non-captured item has a dependency on the
+most recent non-captured item. The captured items are dropped as dependencies as if they were not a
+part of the stream. This is probably intuitive, since a captured stream is clearly nothing like what
+a typical stream is: I think they just strapped the capturing on to streams because it makes graphs
+easier to implement in existing code, despite graphs and streams being pretty disparate.
+
+Illegal Operations
+------------------
+
+It is illegal to sync or query the execution status of a stream which is being captured, since no
+execution is actually happening: a graph is just being built. This extends to handles which
+encompass stream capture, like device and context handles.
+
+Similarly, use of the legacy stream is invalid while a stream is being captured (if it was not
+created with ``cudaStreamNonBlocking``) as such usage would require synchronisation with captured
+streams. Synchronous APIs, like ``cudaMemcpy``, are also therefore invalid, since they use the
+legacy stream.
+
+A graph waiting on an event from
+
+- another capture graph is illegal
+- a stream that is not captured requires ``cudaEventWaitExternal``
+
+Also
+
+  A small number of APIs that enqueue asynchronous operations into streams are not currently supported
+  in graphs and will return an error if called with a stream which is being captured, such as
+  cudaStreamAttachMemAsync()
+
+but I cannot see an exhaustive list documenting all exceptions.
+
+When an illegal operations is performed on a stream that is being captured, further use of streams
+or captured events associated with the capture graph is invalid until the capture is ended, which
+will return an error and a NULL graph.
+
 Meta Info
 =========
 
