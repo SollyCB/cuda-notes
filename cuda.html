@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="generator" content="Docutils 0.21.2: https://docutils.sourceforge.io/" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>cuda.rst</title>
+<style type="text/css">
+
+/* Minimal style sheet for the HTML output of Docutils.                    */
+/*                                                                         */
+/* :Author: Günter Milde, based on html4css1.css by David Goodger          */
+/* :Id: $Id: minimal.css 9545 2024-02-17 10:37:56Z milde $                                                               */
+/* :Copyright: © 2015, 2021 Günter Milde.                                  */
+/* :License: Released under the terms of the `2-Clause BSD license`_,      */
+/*    in short:                                                            */
+/*                                                                         */
+/*    Copying and distribution of this file, with or without modification, */
+/*    are permitted in any medium without royalty provided the copyright   */
+/*    notice and this notice are preserved.                                */
+/*                                                                         */
+/*    This file is offered as-is, without any warranty.                    */
+/*                                                                         */
+/* .. _2-Clause BSD license: http://www.spdx.org/licenses/BSD-2-Clause     */
+
+/* This CSS3 stylesheet defines rules for Docutils elements without        */
+/* HTML equivalent. It is required to make the document semantics visible. */
+/*                                                                         */
+/* .. _validates: http://jigsaw.w3.org/css-validator/validator$link        */
+
+/* titles */
+p.topic-title,
+p.admonition-title,
+p.system-message-title {
+  font-weight: bold;
+}
+p.sidebar-title,
+p.rubric {
+  font-weight: bold;
+  font-size: larger;
+}
+p.rubric {
+  color: maroon;
+}
+p.subtitle,
+p.section-subtitle,
+p.sidebar-subtitle {
+  font-weight: bold;
+  margin-top: -0.5em;
+}
+h1 + p.subtitle {
+  font-size: 1.6em;
+}
+a.toc-backref {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Warnings, Errors */
+.system-messages h2,
+.system-message-title,
+pre.problematic,
+span.problematic {
+  color: red;
+}
+
+/* Inline Literals */
+.docutils.literal {
+  font-family: monospace;
+  white-space: pre-wrap;
+}
+/* do not wrap at hyphens and similar: */
+.literal > span.pre { white-space: nowrap; }
+
+/* keep line-breaks (\n) visible */
+.pre-wrap { white-space: pre-wrap; }
+
+/* Lists */
+
+/* compact and simple lists: no margin between items */
+.simple  li, .simple  ul, .simple  ol,
+.compact li, .compact ul, .compact ol,
+.simple  > li p, dl.simple  > dd,
+.compact > li p, dl.compact > dd {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+/* Nested Paragraphs */
+p:first-child { margin-top: 0; }
+p:last-child { margin-bottom: 0; }
+details > p:last-child { margin-bottom: 1em; }
+
+/* Table of Contents */
+.contents ul.auto-toc { /* section numbers present */
+  list-style-type: none;
+}
+
+/* Enumerated Lists */
+ol.arabic     { list-style: decimal }
+ol.loweralpha { list-style: lower-alpha }
+ol.upperalpha { list-style: upper-alpha }
+ol.lowerroman { list-style: lower-roman }
+ol.upperroman { list-style: upper-roman }
+
+/* Definition Lists and Derivatives */
+dt .classifier { font-style: italic }
+dt .classifier:before {
+  font-style: normal;
+  margin: 0.5em;
+  content: ":";
+}
+/* Field Lists and similar */
+/* bold field name, content starts on the same line */
+dl.field-list,
+dl.option-list,
+dl.docinfo {
+  display: flow-root;
+}
+dl.field-list > dt,
+dl.option-list > dt,
+dl.docinfo > dt {
+  font-weight: bold;
+  clear: left;
+  float: left;
+  margin: 0;
+  padding: 0;
+  padding-right: 0.25em;
+}
+/* Offset for field content (corresponds to the --field-name-limit option) */
+dl.field-list > dd,
+dl.option-list > dd,
+dl.docinfo > dd {
+  margin-left:  9em; /* ca. 14 chars in the test examples, fit all Docinfo fields */
+}
+/* start nested lists on new line */
+dd > dl:first-child,
+dd > ul:first-child,
+dd > ol:first-child {
+  clear: left;
+}
+/* start field-body on a new line after long field names */
+dl.field-list > dd > *:first-child,
+dl.option-list > dd > *:first-child
+{
+  display: inline-block;
+  width: 100%;
+  margin: 0;
+}
+
+/* Bibliographic Fields (docinfo) */
+dl.docinfo pre.address {
+  font: inherit;
+  margin: 0.5em 0;
+}
+dl.docinfo > dd.authors > p { margin: 0; }
+
+/* Option Lists */
+dl.option-list > dt { font-weight: normal; }
+span.option { white-space: nowrap; }
+
+/* Footnotes and Citations  */
+
+.footnote, .citation { margin: 1em 0; } /* default paragraph skip (Firefox) */
+/* hanging indent */
+.citation { padding-left: 2em; }
+.footnote { padding-left: 1.7em; }
+.footnote.superscript { padding-left: 1.0em; }
+.citation > .label { margin-left: -2em; }
+.footnote > .label { margin-left: -1.7em; }
+.footnote.superscript > .label { margin-left: -1.0em; }
+
+.footnote > .label + *,
+.citation > .label + * {
+  display: inline-block;
+  margin-top: 0;
+  vertical-align: top;
+}
+.footnote > .backrefs + *,
+.citation > .backrefs + * {
+  margin-top: 0;
+}
+.footnote > .label + p, .footnote > .backrefs + p,
+.citation > .label + p, .citation > .backrefs + p {
+  display: inline;
+  vertical-align: inherit;
+}
+
+.backrefs { user-select: none; }
+.backrefs > a { font-style: italic; }
+
+/* superscript footnotes */
+a[role="doc-noteref"].superscript,
+.footnote.superscript > .label,
+.footnote.superscript > .backrefs {
+  vertical-align: super;
+  font-size: smaller;
+  line-height: 1;
+}
+a[role="doc-noteref"].superscript > .fn-bracket,
+.footnote.superscript > .label > .fn-bracket {
+  /* hide brackets in display but leave for copy/paste */
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+}
+[role="doc-noteref"].superscript + [role="doc-noteref"].superscript {
+  padding-left: 0.15em; /* separate consecutive footnote references */
+  /* TODO: unfortunately, "+" also selects with text between the references. */
+}
+
+/* Alignment */
+.align-left   {
+  text-align: left;
+  margin-right: auto;
+}
+.align-center {
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+.align-right  {
+  text-align: right;
+  margin-left: auto;
+}
+.align-top    { vertical-align: top; }
+.align-middle { vertical-align: middle; }
+.align-bottom { vertical-align: bottom; }
+
+/* reset inner alignment in figures and tables */
+figure.align-left, figure.align-right,
+table.align-left, table.align-center, table.align-right {
+  text-align: inherit;
+}
+
+/* Text Blocks */
+.topic { margin: 1em 2em; }
+.sidebar,
+.admonition,
+.system-message {
+  margin: 1em 2em;
+  border: thin solid;
+  padding: 0.5em 1em;
+}
+div.line-block { display: block; }
+div.line-block div.line-block, pre { margin-left: 2em; }
+
+/* Code line numbers: dropped when copying text from the page */
+pre.code .ln { display: none; }
+pre.code code:before {
+  content: attr(data-lineno); /* …, none) fallback not supported by any browser */
+  color: gray;
+}
+
+/* Tables */
+table {
+  border-collapse: collapse;
+}
+td, th {
+  border: thin solid silver;
+  padding: 0 1ex;
+}
+.borderless td, .borderless th {
+  border: 0;
+  padding: 0;
+  padding-right: 0.5em /* separate table cells */
+}
+
+table > caption, figcaption {
+  text-align: left;
+  margin-top: 0.2em;
+  margin-bottom: 0.2em;
+}
+table.captionbelow {
+  caption-side: bottom;
+}
+
+/* MathML (see "math.css" for --math-output=HTML) */
+math .boldsymbol { font-weight: bold; }
+math.boxed, math .boxed {padding: 0.25em; border: thin solid; }
+/* style table similar to AMS "align" or "aligned" environment: */
+mtable.cases > mtr > mtd { text-align: left; }
+mtable.ams-align > mtr > mtd { padding-left: 0; padding-right: 0; }
+mtable.ams-align > mtr > mtd:nth-child(2n) { text-align: left; }
+mtable.ams-align > mtr > mtd:nth-child(2n+1) { text-align: right; }
+mtable.ams-align > mtr > mtd:nth-child(2n+3) { padding-left: 2em; }
+.mathscr mi, mi.mathscr {
+  font-family: STIX, XITSMathJax_Script, rsfs10,
+               "Asana Math", Garamond, cursive;
+}
+
+/* Document Header and Footer */
+header { border-bottom: 1px solid black; }
+footer { border-top: 1px solid black; }
+
+/* Images are block-level by default in Docutils */
+/* New HTML5 block elements: set display for older browsers */
+img, svg, header, footer, main, aside, nav, section, figure, video, details {
+  display: block;
+}
+svg { width: auto; height: auto; }  /* enable scaling of SVG images */
+/* inline images */
+p img, p svg, p video { display: inline; }
+
+</style>
+<style type="text/css">
+
+/* CSS31_ style sheet for the output of Docutils HTML writers.             */
+/* Rules for easy reading and pre-defined style variants.                  */
+/*                                                                         */
+/* :Author: Günter Milde, based on html4css1.css by David Goodger          */
+/* :Id: $Id: plain.css 9615 2024-04-06 13:28:15Z milde $                                                               */
+/* :Copyright: © 2015 Günter Milde.                                        */
+/* :License: Released under the terms of the `2-Clause BSD license`_,      */
+/*    in short:                                                            */
+/*                                                                         */
+/*    Copying and distribution of this file, with or without modification, */
+/*    are permitted in any medium without royalty provided the copyright   */
+/*    notice and this notice are preserved.                                */
+/*                                                                         */
+/*    This file is offered as-is, without any warranty.                    */
+/*                                                                         */
+/* .. _2-Clause BSD license: http://www.spdx.org/licenses/BSD-2-Clause     */
+/* .. _CSS3: https://www.w3.org/Style/CSS/                                 */
+
+
+/* Document Structure */
+/* ****************** */
+
+/* "page layout" */
+body {
+  margin: 0;
+  background-color: #dbdbdb;
+  --field-indent: 9em; /* default indent of fields in field lists */
+}
+main, footer, header {
+  line-height:1.6;
+  /* avoid long lines --> better reading */
+  /* optimum is 45…75 characters/line <http://webtypography.net/2.1.2> */
+  /* OTOH: lines should not be too short because of missing hyphenation, */
+  max-width: 50rem;
+  padding: 1px 2%; /* 1px on top avoids grey bar above title (mozilla) */
+  margin: auto;
+}
+main {
+  counter-reset: table figure;
+  background-color: white;
+}
+footer, header {
+  font-size: smaller;
+  padding: 0.5em 2%;
+  border: none;
+}
+
+/* Table of Contents */
+ul.auto-toc > li > p {
+  padding-left: 1em;
+  text-indent: -1em;
+}
+nav.contents ul {
+  padding-left: 1em;
+}
+main > nav.contents ul ul ul ul:not(.auto-toc) {
+  list-style-type: '\2B29\ ';
+}
+main > nav.contents ul ul ul ul ul:not(.auto-toc) {
+  list-style-type: '\2B1D\ ';
+}
+
+/* Transitions */
+hr.docutils {
+  width: 80%;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  clear: both;
+}
+
+/* Paragraphs */
+
+/* vertical space (parskip) */
+p, ol, ul, dl, li,
+.footnote, .citation,
+div > math,
+table {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+h1, h2, h3, h4, h5, h6,
+dd, details > p:last-child {
+  margin-bottom: 0.5em;
+}
+
+/* Lists */
+/* ===== */
+
+/* Definition Lists */
+/* Indent lists nested in definition lists */
+dd > ul:only-child, dd > ol:only-child { padding-left: 1em; }
+
+/* Description Lists */
+/* styled like in most dictionaries, encyclopedias etc. */
+dl.description {
+  display: flow-root;
+}
+dl.description > dt {
+  font-weight: bold;
+  clear: left;
+  float: left;
+  margin: 0;
+  padding: 0;
+  padding-right: 0.3em;
+}
+dl.description > dd:after {
+  display: table;
+  content: "";
+  clear: left; /* clearfix for empty descriptions */
+}
+
+/* Field Lists */
+
+dl.field-list > dd,
+dl.docinfo > dd {
+  margin-left: var(--field-indent); /* adapted in media queries or HTML */
+}
+
+/* example for custom field-name width */
+dl.field-list.narrow > dd {
+  --field-indent: 5em;
+}
+/* run-in: start field-body on same line after long field names */
+dl.field-list.run-in > dd p {
+  display: block;
+}
+
+/* Bibliographic Fields */
+
+/* generally, bibliographic fields use dl.docinfo */
+/* but dedication and abstract are placed into divs */
+div.abstract p.topic-title {
+  text-align: center;
+}
+div.dedication {
+  margin: 2em 5em;
+  text-align: center;
+  font-style: italic;
+}
+div.dedication p.topic-title {
+  font-style: normal;
+}
+
+/* disclosures */
+details { padding-left: 1em; }
+summary { margin-left: -1em; }
+
+/* Text Blocks */
+/* =========== */
+
+/* Literal Blocks */
+pre.literal-block, pre.doctest-block,
+pre.math, pre.code {
+  font-family: monospace;
+}
+
+/* Block Quotes and Topics */
+bockquote { margin: 1em 2em; }
+blockquote p.attribution,
+.topic p.attribution {
+  text-align: right;
+  margin-left: 20%;
+}
+
+/* Tables */
+/* ====== */
+
+/* th { vertical-align: bottom; } */
+
+table tr { text-align: left; }
+
+/* "booktabs" style (no vertical lines) */
+table.booktabs {
+  border: 0;
+  border-top: 2px solid;
+  border-bottom: 2px solid;
+  border-collapse: collapse;
+}
+table.booktabs * {
+  border: 0;
+}
+table.booktabs th {
+  border-bottom: thin solid;
+}
+
+/* numbered tables (counter defined in div.document) */
+table.numbered > caption:before {
+  counter-increment: table;
+  content: "Table " counter(table) ": ";
+  font-weight: bold;
+}
+
+/* Explicit Markup Blocks */
+/* ====================== */
+
+/* Footnotes and Citations */
+/* ----------------------- */
+
+/* line on the left */
+.footnote-list {
+  border-left: solid thin;
+  padding-left: 0.25em;
+}
+
+/* Directives */
+/* ---------- */
+
+/* Body Elements */
+/* ~~~~~~~~~~~~~ */
+
+/* Images and Figures */
+
+/* let content flow to the side of aligned images and figures */
+figure.align-left,
+img.align-left,
+svg.align-left,
+video.align-left,
+div.align-left,
+object.align-left {
+  clear: left;
+  float: left;
+  margin-right: 1em;
+}
+figure.align-right,
+img.align-right,
+svg.align-right,
+video.align-right,
+div.align-right,
+object.align-right {
+  clear: right;
+  float: right;
+  margin-left: 1em;
+}
+/* Stop floating sidebars, images and figures */
+h1, h2, h3, h4, footer, header { clear: both; }
+
+/* Numbered figures */
+figure.numbered > figcaption > p:before {
+  counter-increment: figure;
+  content: "Figure " counter(figure) ": ";
+  font-weight: bold;
+}
+
+/* Admonitions and System Messages */
+.caution p.admonition-title,
+.attention p.admonition-title,
+.danger p.admonition-title,
+.error p.admonition-title,
+.warning p.admonition-title,
+div.error {
+  color: red;
+}
+
+/* Sidebar */
+/* Move right. In a layout with fixed margins, */
+/* it can be moved into the margin.            */
+aside.sidebar {
+  width: 30%;
+  max-width: 26em;
+  float: right;
+  clear: right;
+  margin-left: 1em;
+  margin-right: -1%;
+  background-color: #fffffa;
+}
+
+
+/* Code */
+pre.code { padding: 0.7ex }
+pre.code, code { background-color: #eeeeee }
+/* basic highlighting: for a complete scheme, see */
+/* https://docutils.sourceforge.io/sandbox/stylesheets/ */
+pre.code .comment, code .comment { color: #5C6576 }
+pre.code .keyword, code .keyword { color: #3B0D06; font-weight: bold }
+pre.code .literal.string, code .literal.string { color: #0C5404 }
+pre.code .name.builtin, code .name.builtin { color: #352B84 }
+pre.code .deleted, code .deleted { background-color: #DEB0A1}
+pre.code .inserted, code .inserted { background-color: #A3D289}
+
+
+/* Epigraph           */
+/* Highlights         */
+/* Pull-Quote         */
+/* Compound Paragraph */
+/* Container          */
+
+/* Inline Markup */
+/* ============= */
+
+sup, sub { line-height: 0.8; } /* do not add leading for lines with sup/sub */
+
+/* Inline Literals                                          */
+/* possible values: normal, nowrap, pre, pre-wrap, pre-line */
+/*   span.docutils.literal { white-space: pre-wrap; }       */
+
+/* Hyperlink References */
+a { text-decoration: none; }
+
+/* External Targets       */
+/*   span.target.external */
+/* Internal Targets       */
+/*   span.target.internal */
+/* Footnote References    */
+/*   a[role="doc-noteref"] */
+/* Citation References    */
+/*   a.citation-reference */
+
+</style>
+</head>
+<body>
+<main>
+
+
+<section id="kernels">
+<h2>Kernels</h2>
+<p>Kernels are executed by blocks of threads which look like wavefronts. A set of blocks is a grid.
+Blocks can be grouped into clusters after compute 9.</p>
+<p>Launching a kernel looks like this</p>
+<pre class="code C literal-block"><small class="ln">1 </small><code data-lineno="1 "><span class="name">kern</span><span class="operator">&lt;&lt;&lt;</span><span class="name">nblocks</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="name">nthreads_per_block</span><span class="operator">&gt;&gt;&gt;</span></code></pre>
+<p>Defining the cluster setup for a kernel is compile time with <span class="docutils literal">__cluster_dims__</span>, or using the
+<span class="docutils literal">cudaLaunchKernel</span> api.</p>
+</section>
+<section id="memory">
+<h2>Memory</h2>
+<p>Threads in a block can share memory ('shared memory'), threads in a cluster can share memory
+('distributed shared memory'). Global memory is shared between all threads.</p>
+<p>There is also texture and constant memory for specific uses, obviously. These, and global memory
+are persistent across kernel launches (by the same app, obviously).</p>
+<p>Unified memory provides 'managed memory' which is a single coherent memory image with a common
+address space, which seems equivalent to Vulkan memory allocated from a heap with HOST_COHERENT and
+HOST_VISIBLE flags, which you can access via a regular pointer.</p>
+</section>
+<section id="async">
+<h2>Async</h2>
+<p>A cuda threads is the lowest abstraction over computation and memory operations.</p>
+<p>Async work is that which is initiated by a cuda thread, and executed asynchronously <em>as-if</em> by
+another thread (unclear if this means that the work is always done on the initiating thread? Or if
+the work could be handed to someone else? Unclear if this matters at all, or if people rely on
+either of these cases).</p>
+<p>Synchronisation of an async operation has the following scopes, which are intuitive:</p>
+<table>
+<thead>
+<tr><th class="head"><p>Thread scope</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr><td><p>cuda::thread_scope::thread_scope_thread</p></td>
+<td><p>Only the CUDA thread which initiated asynchronous operations synchronizes.</p></td>
+</tr>
+<tr><td><p>cuda::thread_scope::thread_scope_block</p></td>
+<td><p>All or any CUDA threads within the same thread block as the initiating thread synchronizes.</p></td>
+</tr>
+<tr><td><p>cuda::thread_scope::thread_scope_device</p></td>
+<td><p>All or any CUDA threads in the same GPU device as the initiating thread synchronizes.</p></td>
+</tr>
+<tr><td><p>cuda::thread_scope::thread_scope_system</p></td>
+<td><p>All or any CUDA or CPU threads in the same system as the initiating thread synchronizes.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="compute-capability">
+<h2>Compute Capability</h2>
+<p>The names of the Nvidia arches and what 'compute capability' they map to.</p>
+<table>
+<thead>
+<tr><th class="head"><p>Major Revision Number</p></th>
+<th class="head"><p>NVIDIA GPU Architecture</p></th>
+</tr>
+</thead>
+<tbody>
+<tr><td><p>9</p></td>
+<td><p>NVIDIA Hopper GPU Architecture</p></td>
+</tr>
+<tr><td><p>8</p></td>
+<td><p>NVIDIA Ampere GPU Architecture</p></td>
+</tr>
+<tr><td><p>7</p></td>
+<td><p>NVIDIA Volta GPU Architecture</p></td>
+</tr>
+<tr><td><p>6</p></td>
+<td><p>NVIDIA Pascal GPU Architecture</p></td>
+</tr>
+<tr><td><p>5</p></td>
+<td><p>NVIDIA Maxwell GPU Architecture</p></td>
+</tr>
+<tr><td><p>3</p></td>
+<td><p>NVIDIA Kepler GPU Architecture</p></td>
+</tr>
+</tbody>
+</table>
+<p>Some incremental thing that I am just noting for the completeness and pedanticness of it all.</p>
+<table>
+<thead>
+<tr><th class="head"><p>Compute Capability</p></th>
+<th class="head"><p>NVIDIA GPU Architecture</p></th>
+<th class="head"><p>Based On</p></th>
+</tr>
+</thead>
+<tbody>
+<tr><td><p>7.5</p></td>
+<td><p>NVIDIA Turing GPU Architecture</p></td>
+<td><p>NVIDIA Volta GPU Architecture</p></td>
+</tr>
+</tbody>
+</table>
+<p>Compute capability is not the same as cuda version, although some cuda versions will stop supporting older arches.</p>
+</section>
+<section id="programming-interface">
+<h2>Programming Interface</h2>
+<p>Runtime api allows allocating and deallocating device memory and launching kernels. The driver api
+is a superset of the runtime, providing access to 'cuda contexts': an &quot;analogue of host processes
+for the device&quot; (I guess this means - in the unix explanation - that a process is just a set of
+resources that are being used by some progam); and cuda modules: dynamic libraries for the device
+(intuitive).</p>
+</section>
+<section id="ptx">
+<h2>PTX</h2>
+<p>&quot;Kernels can be written using the CUDA instruction set architecture, called PTX, which is described
+in the PTX reference manual. It is however usually more effective to use a high-level programming
+language such as C++&quot; - LOL, &quot;don't write PTX yourself, just leave it to the compiler&quot;.</p>
+</section>
+<section id="compilation">
+<h2>Compilation</h2>
+<p>Interesting: NVCC &quot;modifies the host code&quot; replacing <span class="docutils literal"><span class="pre">&lt;&lt;&lt;...&gt;&gt;&gt;</span></span> with cuda runtime function calls for
+loading and launching kernels. Looks like it removes this shit from the source code before handing
+the remaining source code off to the host compiler.</p>
+<blockquote>
+<p>The modified host code is output either as C++ code that is left to be compiled using another tool
+or as object code directly by letting nvcc invoke the host compiler during the last compilation
+stage.</p>
+</blockquote>
+</section>
+<section id="jit">
+<h2>JIT</h2>
+<p>In cuda this refers to the device driver compiling PTX code loaded by the app at runtime into binary
+code.</p>
+<p>Ah, interesting: while this (obviously) increases load times, it means that an app compiled to PTX
+code can run on future devices, and benefit from future compiler optimisations. That makes good
+sense.</p>
+<p>This compilation is cached and invalidated when the driver updates.</p>
+</section>
+<section id="binary-compat">
+<h2>Binary Compat</h2>
+<p>Controlled by the <span class="docutils literal"><span class="pre">-code</span></span> flag.</p>
+<p>Binary compatibility is guaranteed forwards for minor versions, but not backwards, and not for major
+releases. So a binary for <span class="docutils literal">8.5</span> would work with <span class="docutils literal">8.6</span>, but not <span class="docutils literal">8.4</span>.</p>
+</section>
+<section id="ptx-compat">
+<h2>PTX Compat</h2>
+<p>Controlled by the <span class="docutils literal"><span class="pre">-arch</span></span> flag.</p>
+<p>The flag can take a compute capability (e.g. <span class="docutils literal">compute_50</span>), a specific arch (e.g. <span class="docutils literal">sm_90a</span>,
+<span class="docutils literal">compute_90a</span>), or a specific family (e.g. <span class="docutils literal">sm_100f</span>). Compute capability compilation is forward
+compatible, arch specific is only compatible on the exact physical arch, and family specific runs on
+the exact arch and arches in the same family.</p>
+</section>
+<section id="app-compat">
+<h2>App Compat</h2>
+<p>The <span class="docutils literal"><span class="pre">-gencode</span></span> flag can be used to embed code for various architectures in the same binary, the
+most appropriate of which is selected at runtime.</p>
+<p>The <span class="docutils literal">__CUDA_ARCH__</span>, <span class="docutils literal">__CUDA_ARCH_FAMILY_SPECIFIC__</span> and <span class="docutils literal">__CUDA_ARCH_SPECIFIC__</span> macros can
+be used to control source code compilation.</p>
+</section>
+<section id="initialization">
+<h2>Initialization</h2>
+<p>A context gets created for each device: these are the 'primary device contexts'. A context is shared
+between all host application threads (like a Vulkan VkDevice it seems).</p>
+<p>JIT'ing device code and loading it into device memory happens as a part of context creation.</p>
+<p>A device's primary context can be accessed through the driver API.</p>
+<p><span class="docutils literal">cudaDeviceReset()</span> destroys the primary context of the current device, and the next runtime
+call from any thread which has the same current device will result in the creation of a new primary
+context for the device.</p>
+</section>
+<section id="device-memory">
+<h2>Device Memory</h2>
+<p>Can be allocated either as linear memory, or cuda arrays, the latter of which are and opaque layout
+optimized for texture fetches. Linear memory is allocated from a unified address space, so separate
+allocations can reference eachother via pointers (so just the x64 contiguous block of virtual pages
+type shit).</p>
+<p>Per arch address spaces:</p>
+<table>
+<thead>
+<tr><th class="head"></th>
+<th class="head"><p>x86_64 (AMD64)</p></th>
+<th class="head"><p>POWER (ppc64le)</p></th>
+<th class="head"><p>ARM64</p></th>
+</tr>
+</thead>
+<tbody>
+<tr><td><p>up to compute capability 5.3 (Maxwell)</p></td>
+<td><p>40bit</p></td>
+<td><p>40bit</p></td>
+<td><p>40bit</p></td>
+</tr>
+<tr><td><p>compute capability 6.0 (Pascal) or newer</p></td>
+<td><p>up to 47bit</p></td>
+<td><p>up to 49bit</p></td>
+<td><p>up to 48bit</p></td>
+</tr>
+</tbody>
+</table>
+<p><span class="docutils literal">cudaMallocPitch</span> and <span class="docutils literal">cudaMalloc3D</span> ensure alignment requirements for 2D or 3D array memory
+copies, improving performance.</p>
+<p><span class="docutils literal">cudaMemcpy&lt;To|From&gt;Symbol</span> facilitate the use of constant and global memory spaces, which are
+declared as</p>
+<pre class="code C literal-block"><small class="ln">1 </small><code data-lineno="1 "><span class="name">__constant__</span><span class="whitespace"> </span><span class="keyword type">float</span><span class="whitespace"> </span><span class="name">const_data</span><span class="punctuation">[</span><span class="name">N</span><span class="punctuation">];</span><span class="whitespace">
+</span></code><small class="ln">2 </small><code data-lineno="2 "><span class="whitespace"></span><span class="name">__device__</span><span class="whitespace"> </span><span class="keyword type">float</span><span class="whitespace"> </span><span class="name">device_data</span><span class="punctuation">[</span><span class="name">N</span><span class="punctuation">];</span></code></pre>
+<p><span class="docutils literal">cudaGetSymbolAddress()</span> and <span class="docutils literal">cudaGetSymbolSize()</span> implement queries regarding global data.</p>
+</section>
+<section id="l2-memory-access">
+<h2>L2 Memory Access</h2>
+<p>When accessing global data or cuda graph nodes, single accesses are considered &quot;streamed&quot;, and
+repeated access is considered persistent. The likelihood that such data can be cache resident can be
+increased using the <span class="docutils literal">accessPolicyWindow</span> struct in <span class="docutils literal">cudaStreamAttrValue</span> and
+<span class="docutils literal">cudaKernelNodeAttrValue</span>. Some data range can have its likelihood have its chance of a cache hit
+regulated by the <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/#l2-policy-for-persisting-accesses">hitRatio</a> field.</p>
+<p>Global memory accesses can also be controlled with <span class="docutils literal">cudaAccessPropertyStreaming</span> and
+<span class="docutils literal">cudaAccessPropertyPersisting</span> which inform how likely it is that an access will be repeated, or
+individual.</p>
+<p>If regulating the persistence of L2 cache lines, it is important to explicitly reset memory
+persistence as cache lines may <em>continue to persist for a long time</em>.</p>
+</section>
+<section id="host-memory">
+<h2>Host Memory</h2>
+<section id="page-locked-pinned">
+<h3>Page-Locked (Pinned)</h3>
+<p><span class="docutils literal">cudaHostAlloc</span>, <span class="docutils literal">cudaFreehost</span>, <span class="docutils literal">cudaHostRegister</span></p>
+<p>Facilitates mapping ranges into the device's address space, removing the need for copies, and
+can increase bandwidth (although this last point seems irrelevant since it is specific to a
+front-side bus, but this seems old as shit? <a class="brackets" href="#footnote-1" id="footnote-reference-1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>). Also</p>
+<blockquote>
+<p>Copies between page-locked host memory and device memory can be performed concurrently with kernel
+execution for some devices as mentioned in.</p>
+</blockquote>
+<p>which I don't quite get: I don't know why pinning is requirement here. Maybe because the kernel can
+execute since it doesn't have to worry about the memory not being there?</p>
+<p>Note that the benefits above are only available by default to the device that was current when the
+pinned memory was allocated. In order to apply the benefits to all devices,
+<span class="docutils literal">cudaHostAllocPortable</span> must be specified.</p>
+<p>Performance of pinned memory can be further improved with <span class="docutils literal">cudaHostAllocWriteCombined</span> (as long as
+the host <em>only ever writes</em> to this memory).</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="footnote-1" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#footnote-reference-1">1</a><span class="fn-bracket">]</span></span>
+<p>&quot;The front-side bus was used in all Intel Atom, Celeron, Pentium, Core 2, and Xeon processor
+models through about 2008 and was eliminated in 2009&quot; -
+<a class="reference external" href="https://en.wikipedia.org/wiki/Front-side_bus#Evolution">https://en.wikipedia.org/wiki/Front-side_bus#Evolution</a></p>
+</aside>
+</aside>
+</section>
+<section id="mapped">
+<h3>Mapped</h3>
+<p>Memory mapping works as expected (basically the same as Vulkan).</p>
+</section>
+</section>
+<section id="domains">
+<h2>Domains</h2>
+<p>These facilitate narrowing synchronisation scopes.</p>
+<p>In the case</p>
+<pre class="code C literal-block"><small class="ln"> 1 </small><code data-lineno=" 1 "><span class="name">__managed__</span><span class="whitespace"> </span><span class="keyword type">int</span><span class="whitespace"> </span><span class="name">x</span><span class="whitespace"> </span><span class="operator">=</span><span class="whitespace"> </span><span class="literal number integer">0</span><span class="punctuation">;</span><span class="whitespace">
+</span></code><small class="ln"> 2 </small><code data-lineno=" 2 "><span class="whitespace"></span><span class="name">__device__</span><span class="whitespace">  </span><span class="name">cuda</span><span class="operator">::</span><span class="name">atomic</span><span class="operator">&lt;</span><span class="keyword type">int</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="name">cuda</span><span class="operator">::</span><span class="name">thread_scope_device</span><span class="operator">&gt;</span><span class="whitespace"> </span><span class="name">a</span><span class="punctuation">(</span><span class="literal number integer">0</span><span class="punctuation">);</span><span class="whitespace">
+</span></code><small class="ln"> 3 </small><code data-lineno=" 3 "><span class="whitespace"></span><span class="name">__managed__</span><span class="whitespace"> </span><span class="name">cuda</span><span class="operator">::</span><span class="name">atomic</span><span class="operator">&lt;</span><span class="keyword type">int</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="name">cuda</span><span class="operator">::</span><span class="name">thread_scope_system</span><span class="operator">&gt;</span><span class="whitespace"> </span><span class="name">b</span><span class="punctuation">(</span><span class="literal number integer">0</span><span class="punctuation">);</span><span class="whitespace">
+</span></code><small class="ln"> 4 </small><code data-lineno=" 4 "><span class="whitespace">
+</span></code><small class="ln"> 5 </small><code data-lineno=" 5 "><span class="whitespace"></span><span class="comment multiline">/* Thread 1 (SM) */</span><span class="whitespace">
+</span></code><small class="ln"> 6 </small><code data-lineno=" 6 "><span class="whitespace">
+</span></code><small class="ln"> 7 </small><code data-lineno=" 7 "><span class="whitespace"></span><span class="name">x</span><span class="whitespace"> </span><span class="operator">=</span><span class="whitespace"> </span><span class="literal number integer">1</span><span class="punctuation">;</span><span class="whitespace">
+</span></code><small class="ln"> 8 </small><code data-lineno=" 8 "><span class="whitespace"></span><span class="name">a</span><span class="whitespace"> </span><span class="operator">=</span><span class="whitespace"> </span><span class="literal number integer">1</span><span class="punctuation">;</span><span class="whitespace">
+</span></code><small class="ln"> 9 </small><code data-lineno=" 9 "><span class="whitespace">
+</span></code><small class="ln">10 </small><code data-lineno="10 "><span class="whitespace"></span><span class="comment multiline">/* Thread 2 (SM) */</span><span class="whitespace">
+</span></code><small class="ln">11 </small><code data-lineno="11 "><span class="whitespace">
+</span></code><small class="ln">12 </small><code data-lineno="12 "><span class="whitespace"></span><span class="keyword">while</span><span class="whitespace"> </span><span class="punctuation">(</span><span class="name">a</span><span class="whitespace"> </span><span class="operator">!=</span><span class="whitespace"> </span><span class="literal number integer">1</span><span class="punctuation">)</span><span class="whitespace"> </span><span class="punctuation">;</span><span class="whitespace">
+</span></code><small class="ln">13 </small><code data-lineno="13 "><span class="whitespace"></span><span class="name">assert</span><span class="punctuation">(</span><span class="name">x</span><span class="whitespace"> </span><span class="operator">==</span><span class="whitespace"> </span><span class="literal number integer">1</span><span class="punctuation">);</span><span class="whitespace">
+</span></code><small class="ln">14 </small><code data-lineno="14 "><span class="whitespace"></span><span class="name">b</span><span class="whitespace"> </span><span class="operator">=</span><span class="whitespace"> </span><span class="literal number integer">1</span><span class="punctuation">;</span><span class="whitespace">
+</span></code><small class="ln">15 </small><code data-lineno="15 "><span class="whitespace">
+</span></code><small class="ln">16 </small><code data-lineno="16 "><span class="whitespace"></span><span class="comment multiline">/* Thread 3 (CPU) */</span><span class="whitespace">
+</span></code><small class="ln">17 </small><code data-lineno="17 "><span class="whitespace">
+</span></code><small class="ln">18 </small><code data-lineno="18 "><span class="whitespace"></span><span class="keyword">while</span><span class="whitespace"> </span><span class="punctuation">(</span><span class="name">b</span><span class="whitespace"> </span><span class="operator">!=</span><span class="whitespace"> </span><span class="literal number integer">1</span><span class="punctuation">)</span><span class="whitespace"> </span><span class="punctuation">;</span><span class="whitespace">
+</span></code><small class="ln">19 </small><code data-lineno="19 "><span class="whitespace"></span><span class="name">assert</span><span class="punctuation">(</span><span class="name">x</span><span class="whitespace"> </span><span class="operator">==</span><span class="whitespace"> </span><span class="literal number integer">1</span><span class="punctuation">);</span></code></pre>
+<p>the asserts are true due to memory ordering ensuring that the write to <span class="docutils literal">x</span> is visible before the
+the write to <span class="docutils literal">a</span>. However, this can lead to inefficiencies where the GPU cannot flush its writes
+until it can be sure that it has waited for other writes, as they may be a part of the sync scope of
+the atomic store.</p>
+<p>Using domains, when kernels are launched, they are tagged with an ID, and fence operations will only
+be ordered against those kernels who are tagged with the ID matching the fence's domain. As such, it
+is insufficient to use <span class="docutils literal">thread_scope_device</span> to order operations between kernels outside of a
+fence's doamin: <span class="docutils literal">thread_scope_system</span> must be used instead. While this changes the definition of
+<span class="docutils literal">thread_scope_device</span>, kernels will default to ID 0, so backwards compatibility is not broken.</p>
+<section id="using-domains">
+<h3>Using Domains</h3>
+<table>
+<tbody>
+<tr><td><p><span class="docutils literal">cudaLaunchAttributeMemSyncDomain</span></p></td>
+<td><p>Select between remote and default domains</p></td>
+</tr>
+<tr><td><p><span class="docutils literal">cudaLaunchAttributeMemSyncDomainMap</span></p></td>
+<td><p>Map logical to physical domains</p></td>
+</tr>
+<tr><td><p><span class="docutils literal">cudaLaunchMemSyncDomainDefault</span></p></td>
+<td><p>Default domain</p></td>
+</tr>
+<tr><td><p><span class="docutils literal">cudaLaunchMemSyncDomainRemote</span></p></td>
+<td><p>Isolate remote memory traffic from local</p></td>
+</tr>
+</tbody>
+</table>
+<p><span class="docutils literal">cudaLaunchMemSyncDomainDefault</span> and <span class="docutils literal">cudaLaunchMemSyncDomainRemote</span> are logical domains. They
+allow, for instance, a library to logically separate its kernels without having to consider the
+environment that might be going on around it. Then user code can map logical domains to physical
+domains in order to manage how the separation actually occurs. For instance, the user might have two
+different streams, and he separates out these streams using physical domains; then the library code
+getting called further down the stack only knows that it has separated out its kernels, while the
+user knows that the way the work is being managed at a higher level is distinct.</p>
+<p>There are 4 physical domains on Hopper (compute 9, cuda 12), older arches will just always report 1
+from <span class="docutils literal">cudaDevAttrMemSyncDomainCount</span>, so portable code will just always map kernels to the same
+physical domain.</p>
+</section>
+</section>
+<section id="async-concurrent-execution">
+<h2>Async Concurrent Execution</h2>
+<p>Independent tasks which can operate concurrently:</p>
+<ul class="simple">
+<li><p>Computation on the host;</p></li>
+<li><p>Computation on the device;</p></li>
+<li><p>Memory transfers from the host to the device;</p></li>
+<li><p>Memory transfers from the device to the host;</p></li>
+<li><p>Memory transfers within the memory of a given device;</p></li>
+<li><p>Memory transfers among devices.</p></li>
+</ul>
+<p>Operations which can be launched from the host, with control returned to the host before the
+operation has completed:</p>
+<ul class="simple">
+<li><p>Kernel launches;</p></li>
+<li><p>Memory copies within a single device’s memory;</p></li>
+<li><p>Memory copies from host to device of a memory block of 64 KB or less;</p></li>
+<li><p>Memory copies performed by functions that are suffixed with <span class="docutils literal">Async</span>;</p></li>
+<li><p>Memory set function calls.</p></li>
+</ul>
+<p>Note that:</p>
+<ul class="simple">
+<li><p><strong>``Async`` memory copies might also be synchronous if they involve host memory that is not
+page-locked.</strong></p></li>
+<li><p>Kernel launches are synchronous if hardware counters are collected via a profiler (Nsight, Visual
+Profiler) unless concurrent kernel profiling is enabled.</p></li>
+</ul>
+<section id="concurrent-kernels">
+<h3>Concurrent Kernels</h3>
+<p>Supported at 2.x and above, but:</p>
+<blockquote>
+<p>A kernel from one CUDA context cannot execute concurrently with a kernel from another CUDA context.
+The GPU may time slice to provide forward progress to each context. If a user wants to run kernels
+from multiple process simultaneously on the SM, one must enable MPS.</p>
+</blockquote>
+<p>Also kernels with lots of memory are less likely to run concurrently (intuitive).</p>
+<p>Memory copies can happen async with kernel execution, resembling Vulkan dedicated transfer queues.</p>
+<p>Memory download and upload can also be overlapped, but involved host memory must be pinned.</p>
+</section>
+</section>
+<section id="streams">
+<h2>Streams</h2>
+<p>Streams are just Vulkan command buffers: you submit them in sequence, but they can execute
+concurrently, out of order with eachother, etc. Commands start executing when their dependencies are
+met, which can be within stream or cross stream. Work on a stream can overlap according the rules
+described above.</p>
+<p>Calling <span class="docutils literal">cudaStreamDestroy</span> while the device is still chewing through it will cause the function
+to immediately return with the stream's resources being cleaned up automatically later.</p>
+<section id="default-stream">
+<h3>Default Stream</h3>
+<p>Not specifying a stream or passing 0 will use the default stream. This doesn't seem any different
+just basically using a single command buffer for all your shit, but I might wrong because</p>
+<blockquote>
+<p>For code that is compiled using the --default-stream per-thread compilation flag (or that defines
+the CUDA_API_PER_THREAD_DEFAULT_STREAM macro before including CUDA headers (cuda.h and
+cuda_runtime.h)), the default stream is a regular stream and each host thread has its own default
+stream.</p>
+</blockquote>
+<p>which could imply that the default stream otherwise is not regular? But an earlier quote</p>
+<blockquote>
+<p>Kernel launches... are issued to the default stream. They are therefore executed in order.</p>
+</blockquote>
+<p>in using 'therefore' implies that the default stream without the aforementioned switches is still a
+regular stream, and the &quot;executed in order&quot; only refers to the fact that work in a stream is
+initiated in the order that it appears in the stream, but does not necessarily complete in the order
+in which it was submitted.</p>
+<p>I am going with &quot;the default stream is a regular stream, and per-thread default streams are also
+just streams, but they are used when a stream is not specified per-thread, not globally&quot;.</p>
+</section>
+</section>
+<section id="async-concurrent-execution-1">
+<h2>Async Concurrent Execution</h2>
+<p>Independent tasks which can operate concurrently:</p>
+<ul class="simple">
+<li><p>Computation on the host;</p></li>
+<li><p>Computation on the device;</p></li>
+<li><p>Memory transfers from the host to the device;</p></li>
+<li><p>Memory transfers from the device to the host;</p></li>
+<li><p>Memory transfers within the memory of a given device;</p></li>
+<li><p>Memory transfers among devices.</p></li>
+</ul>
+<p>Operations which can be launched from the host, with control returned to the host before the
+operation has completed:</p>
+<ul class="simple">
+<li><p>Kernel launches;</p></li>
+<li><p>Memory copies within a single device’s memory;</p></li>
+<li><p>Memory copies from host to device of a memory block of 64 KB or less;</p></li>
+<li><p>Memory copies performed by functions that are suffixed with <span class="docutils literal">Async</span>;</p></li>
+<li><p>Memory set function calls.</p></li>
+</ul>
+<p>Note that:</p>
+<ul class="simple">
+<li><p><strong>``Async`` memory copies might also be synchronous if they involve host memory that is not
+page-locked.</strong></p></li>
+<li><p>Kernel launches are synchronous if hardware counters are collected via a profiler (Nsight, Visual
+Profiler) unless concurrent kernel profiling is enabled.</p></li>
+</ul>
+<section id="concurrent-kernels-1">
+<h3>Concurrent Kernels</h3>
+<p>Supported at 2.x and above, but:</p>
+<blockquote>
+<p>A kernel from one CUDA context cannot execute concurrently with a kernel from another CUDA context.
+The GPU may time slice to provide forward progress to each context. If a user wants to run kernels
+from multiple process simultaneously on the SM, one must enable MPS.</p>
+</blockquote>
+<p>Also kernels with lots of memory are less likely to run concurrently (intuitive).</p>
+<p>Memory copies can happen async with kernel execution, resembling Vulkan dedicated transfer queues.</p>
+<p>Memory download and upload can also be overlapped, but involved host memory must be pinned.</p>
+</section>
+</section>
+<section id="streams-1">
+<h2>Streams</h2>
+<p>Streams are just Vulkan command buffers: you submit them in sequence, but they can execute
+concurrently, out of order with eachother, etc. Commands start executing when their dependencies are
+met, which can be within stream or cross stream. Work on a stream can overlap according the rules
+described above.</p>
+<p>Calling <span class="docutils literal">cudaStreamDestroy</span> while the device is still chewing through it will cause the function
+to immediately return with the stream's resources being cleaned up automatically later.</p>
+<section id="default-stream-1">
+<h3>Default Stream</h3>
+<p>Not specifying a stream or passing 0 will use the default stream. This doesn't seem any different
+just basically using a single command buffer for all your shit, but I might wrong because</p>
+<blockquote>
+<p>For code that is compiled using the --default-stream per-thread compilation flag (or that defines
+the CUDA_API_PER_THREAD_DEFAULT_STREAM macro before including CUDA headers (cuda.h and
+cuda_runtime.h)), the default stream is a regular stream and each host thread has its own default
+stream.</p>
+</blockquote>
+<p>which could imply that the default stream otherwise is not regular? But an earlier quote</p>
+<blockquote>
+<p>Kernel launches... are issued to the default stream. They are therefore executed in order.</p>
+</blockquote>
+<p>in using 'therefore' implies that the default stream without the aforementioned switches is still a
+regular stream, and the &quot;executed in order&quot; only refers to the fact that work in a stream is
+initiated in the order that it appears in the stream, but does not necessarily complete in the order
+in which it was submitted.</p>
+<p>I am going with &quot;the default stream is a regular stream, and per-thread default streams are also
+just streams, but they are used when a stream is not specified per-thread, not globally&quot;.</p>
+<p>If code is compiled without specifying a <span class="docutils literal"><span class="pre">--default-stream</span></span>, <span class="docutils literal"><span class="pre">--default-stream</span> legacy</span> is
+assumed, which causes each device to have a single <em>NULL stream</em>, shared by all host threads, which
+has implicit synchronisation (see below).</p>
+</section>
+<section id="synchronisation">
+<h3>Synchronisation</h3>
+<section id="explicit">
+<h4>Explicit</h4>
+<ul class="simple">
+<li><p><span class="docutils literal">cudaDeviceSynchronize</span>
+Block host until all streams in all threads have completed.</p></li>
+<li><p><span class="docutils literal">cudaStreamSynchronize</span>
+Block host until given stream has completed.</p></li>
+<li><p><span class="docutils literal">cudaStreamWaitEvent</span>
+Like a hardcore, zero granularity pipeline barrier: all commands in the stream after this call
+must wait for all commands before the call to complete.</p></li>
+<li><p><span class="docutils literal">cudaStreamQuery</span>
+Ask if preceding commands in a stream have completed.</p></li>
+</ul>
+</section>
+<section id="implicit">
+<h4>Implicit</h4>
+<p>The NULL stream causes total stream sync:</p>
+<blockquote>
+<p>Two operations from different streams cannot run concurrently if any CUDA operation on the NULL
+stream is submitted in-between them, unless the streams are non-blocking streams (created with the
+cudaStreamNonBlocking flag).</p>
+</blockquote>
+<p>So don't mix async stream submissions and NULL stream submissions, is the very obvious tip that the
+docs give following this quote.</p>
+</section>
+</section>
+<section id="host-callbacks">
+<h3>Host Callbacks</h3>
+<p>Host functions can be inserted into a stream and will run once commands preceding it in the stream
+have completed. Commands later in the stream do not execute until the host function has returned.</p>
+</section>
+<section id="priority">
+<h3>Priority</h3>
+<p>Streams can be given a priority which hints the GPU about what to schedule first. Stream priority
+does not provide any ordering guarantees and cannot preempt or interrupt work.</p>
+</section>
+</section>
+<section id="programmatic-dependent-launch">
+<h2>Programmatic Dependent Launch</h2>
+<p>A fancy way of saying 'Vulkan pipeline barriers': it allows a kernel to begin execution before its
+dependencies have completed if the kernel has work that it can do that is not dependent (like how
+Vulkan pipeline barriers allow you to wait on specific stages, as opposed to having to wait for an
+entire pipeline).</p>
+<p>This is achieved via <span class="docutils literal">cudaTriggerProgrammaticLaunchCompletion</span> and
+<span class="docutils literal">cudaGridDependencySynchronize</span>, where the latter is called on a dependent kernel, and blocks
+until it sees the former, which will be called in the earlier kernel once it has completed all the
+work that the later kernel actually depends on (the call itself is a flush). If the earlier kernel
+does not call the explicit signal, it is implicitly called when the kernel completes.</p>
+<p>Concurrency is not guaranteed, only being applied opportunistically.</p>
+<section id="use-with-graphs">
+<h3>Use with graphs</h3>
+<table>
+<thead>
+<tr><th class="head"><p>Stream Code</p></th>
+<th class="head"><p>Graph Edge</p></th>
+</tr>
+</thead>
+<tbody>
+<tr><td><div class="line-block">
+<div class="line">cudaLaunchAttribute attribute;</div>
+<div class="line">attribute.id = cudaLaunchAttributeProgrammaticStreamSerialization;</div>
+<div class="line">attribute.val.programmaticStreamSerializationAllowed = 1;</div>
+</div>
+</td>
+<td><div class="line-block">
+<div class="line">cudaGraphEdgeData edgeData;</div>
+<div class="line">edgeData.type = cudaGraphDependencyTypeProgrammatic;</div>
+<div class="line">edgeData.from_port = cudaGraphKernelNodePortProgrammatic;</div>
+</div>
+</td>
+</tr>
+<tr><td><div class="line-block">
+<div class="line">cudaLaunchAttribute attribute;</div>
+<div class="line">attribute.id = cudaLaunchAttributeProgrammaticEvent;</div>
+<div class="line">attribute.val.programmaticEvent.triggerAtBlockStart = 0;</div>
+</div>
+</td>
+<td><div class="line-block">
+<div class="line">cudaGraphEdgeData edgeData;</div>
+<div class="line">edgeData.type = cudaGraphDependencyTypeProgrammatic;</div>
+<div class="line">edgeData.from_port = cudaGraphKernelNodePortProgrammatic;</div>
+</div>
+</td>
+</tr>
+<tr><td><div class="line-block">
+<div class="line">cudaLaunchAttribute attribute;</div>
+<div class="line">attribute.id = cudaLaunchAttributeProgrammaticEvent;</div>
+<div class="line">attribute.val.programmaticEvent.triggerAtBlockStart = 1;</div>
+</div>
+</td>
+<td><div class="line-block">
+<div class="line">cudaGraphEdgeData edgeData;</div>
+<div class="line">edgeData.type = cudaGraphDependencyTypeProgrammatic;</div>
+<div class="line">edgeData.from_port = cudaGraphKernelNodePortLaunchCompletion;</div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="graphs">
+<h2>Graphs</h2>
+<p>Resemble Vulkan subpasses, where you program in the depedency edges, and the driver inserts in the
+synchronisation, whereas normally in Vulkan you are both defining the depedency edges and inserting
+the synchronisation yourself.</p>
+<p>The rationale behind graphs is that when submitting a kernel on a stream, the driver has to do a
+bunch of setup for that kernel without much of the context about how it fits into the broader
+workflow. In this way, one cannot consider Vulkan command buffers as CUDA streams, because the
+Vulkan driver needn't do any of this same setup: a command buffer in Vulkan is low-level enough that
+you are able to describe the graph yourself, the driver just passes the instructions to the GPU for
+chewing, since all of the setup is on you.</p>
+<p>With a CUDA graph, the driver still has to do all the work for you, but it has more information with
+which it can reason about the work. Graph workflow is also in three stages, the second of which is
+bake/compilation, meaning that the driver doesn't have to keep doing setup work over and over, since
+it does the work once, and then that work is reusable.</p>
+<p>The three stages are BS: definition, compilation, launching. It is just Vulkan command buffer, but
+the driver makes it for you: a resusable set of work that can be passed to the GPU with less driver
+overhead.</p>
+<section id="nodes">
+<h3>Nodes</h3>
+<p>A node on a graph is scheduling any time after its dependencies are met.</p>
+<p>A node is any of the following operations:</p>
+<ul class="simple">
+<li><p>kernel</p></li>
+<li><p>CPU function call</p></li>
+<li><p>memory copy</p></li>
+<li><p>memset</p></li>
+<li><p>empty node</p></li>
+<li><p>waiting on an event</p></li>
+<li><p>recording an event</p></li>
+<li><p>signalling an external semaphore</p></li>
+<li><p>waiting on an external semaphore</p></li>
+<li><p>conditional node</p></li>
+<li><p>child graph</p></li>
+</ul>
+</section>
+<section id="edge-data">
+<h3>Edge Data</h3>
+<p>This is exactly Vulkan pipeline dependencies: edge data is defined by an outgoing port, an incoming
+port, and a type. This is just Vulkan execution scopes and how they are grouped: like a memory copy
+could map be something like a buffer upload waited on by a vertex shader:</p>
+<table>
+<thead>
+<tr><th class="head"><p>CUDA Name</p></th>
+<th class="head"><p>Vulkan Equivalent Name</p></th>
+<th class="head"><p>Vulkan Data Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr><td><p>type</p></td>
+<td><p>VkAccessFlags</p></td>
+<td><p>VK_ACCESS_MEMORY_WRITE_BIT</p></td>
+</tr>
+<tr><td><p>outgoing</p></td>
+<td><p>VkPipelineStageFlagBits</p></td>
+<td><p>VK_PIPELINE_STAGE_2_TRANSFER_BIT</p></td>
+</tr>
+<tr><td><p>incoming</p></td>
+<td><p>VkPipelineStageFlagBits</p></td>
+<td><p>VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT</p></td>
+</tr>
+</tbody>
+</table>
+<p>Where the 'ports' are Vulkan 'synchronisation scopes', and the 'type' defines the access scope <a class="brackets" href="#footnote-2" id="footnote-reference-2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a>
+(although I am not sure what direction incoming and outgoing are, as it depends on how you consider
+the direction that the edges are pointing in).</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="footnote-2" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#footnote-reference-2">2</a><span class="fn-bracket">]</span></span>
+<p><a class="reference external" href="https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#synchronization-dependencies">https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#synchronization-dependencies</a></p>
+</aside>
+</aside>
+<section id="edge-data-from-stream-capture">
+<h4>Edge Data From Stream Capture</h4>
+<!-- TODO: Come back to this with more info -->
+<p>There is also some weirdness to do with getting the edge data using stream capture API which seems
+to have some potential gotchas to do with edges that do not wait for full completion (this section
+will be expanded when I have more info, which I assume I will get once I read the stream capture
+section).</p>
+</section>
+</section>
+</section>
+<section id="meta-info">
+<h2>Meta Info</h2>
+<section id="bookmark">
+<h3>Bookmark</h3>
+<p><a class="reference external" href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/#creating-a-graph-using-graph-apis">https://docs.nvidia.com/cuda/cuda-c-programming-guide/#creating-a-graph-using-graph-apis</a></p>
+</section>
+</section>
+</main>
+</body>
+</html>
