@@ -1246,13 +1246,132 @@ origin stream must wait for other streams to complete - see the below code examp
 </span></code><small class="ln">5 </small><code data-lineno="5 "><span class="whitespace">                                              </span><span class="error">\</span><span class="whitespace"> </span><span class="operator">/</span><span class="whitespace">
 </span></code><small class="ln">6 </small><code data-lineno="6 "><span class="whitespace">                                               </span><span class="name">v</span><span class="whitespace">
 </span></code><small class="ln">7 </small><code data-lineno="7 "><span class="whitespace">                                               </span><span class="name">D</span></code></pre>
+<p>Note that when a stream leaves capture mode, the first non-captured item has a dependency on the
+most recent non-captured item. The captured items are dropped as dependencies as if they were not a
+part of the stream. This is probably intuitive, since a captured stream is clearly nothing like what
+a typical stream is: I think they just strapped the capturing on to streams because it makes graphs
+easier to implement in existing code, despite graphs and streams being pretty disparate.</p>
+</section>
+<section id="illegal-operations">
+<h3>Illegal Operations</h3>
+<p>It is illegal to sync or query the execution status of a stream which is being captured, since no
+execution is actually happening: a graph is just being built. This extends to handles which
+encompass stream capture, like device and context handles.</p>
+<p>Similarly, use of the legacy stream is invalid while a stream is being captured (if it was not
+created with <span class="docutils literal">cudaStreamNonBlocking</span>) as such usage would require synchronisation with captured
+streams. Synchronous APIs, like <span class="docutils literal">cudaMemcpy</span>, are also therefore invalid, since they use the
+legacy stream.</p>
+<p>A graph waiting on an event from</p>
+<ul class="simple">
+<li><p>another capture graph is illegal</p></li>
+<li><p>a stream that is not captured requires <span class="docutils literal">cudaEventWaitExternal</span></p></li>
+</ul>
+<p>Also</p>
+<blockquote>
+<p>A small number of APIs that enqueue asynchronous operations into streams are not currently supported
+in graphs and will return an error if called with a stream which is being captured, such as
+cudaStreamAttachMemAsync()</p>
+</blockquote>
+<p>but I cannot see an exhaustive list documenting all exceptions.</p>
+<p>When an illegal operations is performed on a stream that is being captured, further use of streams
+or captured events associated with the capture graph is invalid until the capture is ended, which
+will return an error and a NULL graph.</p>
+</section>
+<section id="user-objects">
+<h3>User Objects</h3>
+<p>These are a way to to associate a destructor callback with a reference count that the graph can use
+to know when to clean shit up.</p>
+<p>This took a second to get completely at first just because the section is long, but it is literally
+just what it says on the tin. The only thing to note is that a ref count owned by a child graph is
+associated with the child, and not the parent, which is intuitive.</p>
+</section>
+<section id="graph-updates">
+<h3>Graph Updates</h3>
+<p>Baked graphs can be updated as long as their topology does not change. This has the obvious
+performance benefits that come with skipping all the checks and logic that must happen in order to
+re-instantiate a graph.</p>
+<p>Graph nodes can be updated individually, or an entire graph can be swapped with a topologically
+equivalent one. The former is faster, since checks for topological equivalence and unaffected nodes
+do not need to run, but is not always possible (e.g. the graph came from a library, so its topology
+and node handles are are not available to the user) or so many nodes need to update that going node
+by node is impractical.</p>
+<section id="limitations">
+<h4>Limitations</h4>
+<p>These are pretty intuitive if you consider the operations that a graph would encode.</p>
+<p>I am just going to paste in the full section, as it is already information dense</p>
+<pre class="code literal-block"><small class="ln"> 1 </small><code data-lineno=" 1 ">Kernel nodes:
+</code><small class="ln"> 2 </small><code data-lineno=" 2 ">
+</code><small class="ln"> 3 </small><code data-lineno=" 3 "> - The owning context of the function cannot change.
+</code><small class="ln"> 4 </small><code data-lineno=" 4 ">
+</code><small class="ln"> 5 </small><code data-lineno=" 5 "> - A node whose function originally did not use CUDA dynamic parallelism cannot be updated to a
+</code><small class="ln"> 6 </small><code data-lineno=" 6 ">   function which uses CUDA dynamic parallelism.
+</code><small class="ln"> 7 </small><code data-lineno=" 7 ">
+</code><small class="ln"> 8 </small><code data-lineno=" 8 ">cudaMemset and cudaMemcpy nodes:
+</code><small class="ln"> 9 </small><code data-lineno=" 9 ">
+</code><small class="ln">10 </small><code data-lineno="10 "> - The CUDA device(s) to which the operand(s) was allocated/mapped cannot change.
+</code><small class="ln">11 </small><code data-lineno="11 ">
+</code><small class="ln">12 </small><code data-lineno="12 "> - The source/destination memory must be allocated from the same context as the original
+</code><small class="ln">13 </small><code data-lineno="13 "> - source/destination memory.
+</code><small class="ln">14 </small><code data-lineno="14 ">
+</code><small class="ln">15 </small><code data-lineno="15 "> - Only 1D cudaMemset/cudaMemcpy nodes can be changed.
+</code><small class="ln">16 </small><code data-lineno="16 ">
+</code><small class="ln">17 </small><code data-lineno="17 ">Additional memcpy node restrictions:
+</code><small class="ln">18 </small><code data-lineno="18 ">
+</code><small class="ln">19 </small><code data-lineno="19 "> - Changing either the source or destination memory type (i.e., cudaPitchedPtr, cudaArray_t, etc.),
+</code><small class="ln">20 </small><code data-lineno="20 ">   or the type of transfer (i.e., cudaMemcpyKind) is not supported.
+</code><small class="ln">21 </small><code data-lineno="21 ">
+</code><small class="ln">22 </small><code data-lineno="22 ">External semaphore wait nodes and record nodes:
+</code><small class="ln">23 </small><code data-lineno="23 ">
+</code><small class="ln">24 </small><code data-lineno="24 "> - Changing the number of semaphores is not supported.
+</code><small class="ln">25 </small><code data-lineno="25 ">
+</code><small class="ln">26 </small><code data-lineno="26 ">Conditional nodes:
+</code><small class="ln">27 </small><code data-lineno="27 ">
+</code><small class="ln">28 </small><code data-lineno="28 "> - The order of handle creation and assignment must match between the graphs.
+</code><small class="ln">29 </small><code data-lineno="29 ">
+</code><small class="ln">30 </small><code data-lineno="30 "> - Changing node parameters is not supported (i.e. number of graphs in the conditional, node context,
+</code><small class="ln">31 </small><code data-lineno="31 ">   etc).
+</code><small class="ln">32 </small><code data-lineno="32 ">
+</code><small class="ln">33 </small><code data-lineno="33 "> - Changing parameters of nodes within the conditional body graph is subject to the rules above.</code></pre>
+<p>In order to do a full graph swap, the following rules apply (also just a copy paste)</p>
+<pre class="code literal-block"><small class="ln"> 1 </small><code data-lineno=" 1 ">  1) For any capturing stream, the API calls operating on that stream must be made in the same order,
+</code><small class="ln"> 2 </small><code data-lineno=" 2 ">     including event wait and other api calls not directly corresponding to node creation.
+</code><small class="ln"> 3 </small><code data-lineno=" 3 ">
+</code><small class="ln"> 4 </small><code data-lineno=" 4 ">  2) The API calls which directly manipulate a given graph node’s incoming edges (including captured
+</code><small class="ln"> 5 </small><code data-lineno=" 5 ">     stream APIs, node add APIs, and edge addition / removal APIs) must be made in the same order.
+</code><small class="ln"> 6 </small><code data-lineno=" 6 ">     Moreover, when dependencies are specified in arrays to these APIs, the order in which the
+</code><small class="ln"> 7 </small><code data-lineno=" 7 ">     dependencies are specified inside those arrays must match.
+</code><small class="ln"> 8 </small><code data-lineno=" 8 ">
+</code><small class="ln"> 9 </small><code data-lineno=" 9 ">  3) Sink nodes must be consistently ordered. Sink nodes are nodes without dependent nodes / outgoing
+</code><small class="ln">10 </small><code data-lineno="10 ">     edges in the final graph at the time of the cudaGraphExecUpdate() invocation. The following
+</code><small class="ln">11 </small><code data-lineno="11 ">     operations affect sink node ordering (if present) and must (as a combined set) be made in the
+</code><small class="ln">12 </small><code data-lineno="12 ">     same order:
+</code><small class="ln">13 </small><code data-lineno="13 ">
+</code><small class="ln">14 </small><code data-lineno="14 ">      - Node add APIs resulting in a sink node.
+</code><small class="ln">15 </small><code data-lineno="15 ">
+</code><small class="ln">16 </small><code data-lineno="16 ">      - Edge removal resulting in a node becoming a sink node.
+</code><small class="ln">17 </small><code data-lineno="17 ">
+</code><small class="ln">18 </small><code data-lineno="18 ">      - cudaStreamUpdateCaptureDependencies(), if it removes a sink node from a capturing stream’s
+</code><small class="ln">19 </small><code data-lineno="19 ">        dependency set.
+</code><small class="ln">20 </small><code data-lineno="20 ">
+</code><small class="ln">21 </small><code data-lineno="21 ">      - cudaStreamEndCapture().</code></pre>
+<p>Updating individual nodes follows only the rules laid out earlier (at the beginning of
+<a class="reference internal" href="#limitations">Limitations</a>). Each update type has its own dedicated API call</p>
+<pre class="code literal-block"><small class="ln"> 1 </small><code data-lineno=" 1 ">cudaGraphExecKernelNodeSetParams()
+</code><small class="ln"> 2 </small><code data-lineno=" 2 ">cudaGraphExecMemcpyNodeSetParams()
+</code><small class="ln"> 3 </small><code data-lineno=" 3 ">cudaGraphExecMemsetNodeSetParams()
+</code><small class="ln"> 4 </small><code data-lineno=" 4 ">cudaGraphExecHostNodeSetParams()
+</code><small class="ln"> 5 </small><code data-lineno=" 5 ">cudaGraphExecChildGraphNodeSetParams()
+</code><small class="ln"> 6 </small><code data-lineno=" 6 ">cudaGraphExecEventRecordNodeSetEvent()
+</code><small class="ln"> 7 </small><code data-lineno=" 7 ">cudaGraphExecEventWaitNodeSetEvent()
+</code><small class="ln"> 8 </small><code data-lineno=" 8 ">cudaGraphExecExternalSemaphoresSignalNodeSetParams()
+</code><small class="ln"> 9 </small><code data-lineno=" 9 ">cudaGraphExecExternalSemaphoresWaitNodeSetParams()</code></pre>
+</section>
 </section>
 </section>
 <section id="meta-info">
 <h2>Meta Info</h2>
 <section id="bookmark">
 <h3>Bookmark</h3>
-<p><a class="reference external" href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/#creating-a-graph-using-graph-apis">https://docs.nvidia.com/cuda/cuda-c-programming-guide/#creating-a-graph-using-graph-apis</a></p>
 </section>
 </section>
 </main>

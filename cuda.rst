@@ -668,10 +668,149 @@ When an illegal operations is performed on a stream that is being captured, furt
 or captured events associated with the capture graph is invalid until the capture is ended, which
 will return an error and a NULL graph.
 
+User Objects
+------------
+
+These are a way to to associate a destructor callback with a reference count that the graph can use
+to know when to clean shit up.
+
+This took a second to get completely at first just because the section is long, but it is literally
+just what it says on the tin. The only thing to note is that a ref count owned by a child graph is
+associated with the child, and not the parent, which is intuitive.
+
+Graph Updates
+-------------
+
+Baked graphs can be updated as long as their topology does not change. This has the obvious
+performance benefits that come with skipping all the checks and logic that must happen in order to
+re-instantiate a graph.
+
+Graph nodes can be updated individually, or an entire graph can be swapped with a topologically
+equivalent one. The former is faster, since checks for topological equivalence and unaffected nodes
+do not need to run, but is not always possible (e.g. the graph came from a library, so its topology
+and node handles are are not available to the user) or so many nodes need to update that going node
+by node is impractical.
+
+Limitations
+^^^^^^^^^^^
+
+These are pretty intuitive if you consider the operations that a graph would encode.
+
+I am just going to paste in the full section, as it is already information dense
+
+.. code::
+  :number-lines:
+
+  Kernel nodes:
+
+   - The owning context of the function cannot change.
+
+   - A node whose function originally did not use CUDA dynamic parallelism cannot be updated to a
+     function which uses CUDA dynamic parallelism.
+
+  cudaMemset and cudaMemcpy nodes:
+
+   - The CUDA device(s) to which the operand(s) was allocated/mapped cannot change.
+
+   - The source/destination memory must be allocated from the same context as the original
+   - source/destination memory.
+
+   - Only 1D cudaMemset/cudaMemcpy nodes can be changed.
+
+  Additional memcpy node restrictions:
+
+   - Changing either the source or destination memory type (i.e., cudaPitchedPtr, cudaArray_t, etc.),
+     or the type of transfer (i.e., cudaMemcpyKind) is not supported.
+
+  External semaphore wait nodes and record nodes:
+
+   - Changing the number of semaphores is not supported.
+
+  Conditional nodes:
+
+   - The order of handle creation and assignment must match between the graphs.
+
+   - Changing node parameters is not supported (i.e. number of graphs in the conditional, node context,
+     etc).
+
+   - Changing parameters of nodes within the conditional body graph is subject to the rules above.
+
+
+In order to do a full graph swap, the following rules apply (also just a copy paste)
+
+.. code::
+  :number-lines:
+
+    1) For any capturing stream, the API calls operating on that stream must be made in the same order,
+       including event wait and other api calls not directly corresponding to node creation.
+
+    2) The API calls which directly manipulate a given graph node’s incoming edges (including captured
+       stream APIs, node add APIs, and edge addition / removal APIs) must be made in the same order.
+       Moreover, when dependencies are specified in arrays to these APIs, the order in which the
+       dependencies are specified inside those arrays must match.
+
+    3) Sink nodes must be consistently ordered. Sink nodes are nodes without dependent nodes / outgoing
+       edges in the final graph at the time of the cudaGraphExecUpdate() invocation. The following
+       operations affect sink node ordering (if present) and must (as a combined set) be made in the
+       same order:
+
+        - Node add APIs resulting in a sink node.
+
+        - Edge removal resulting in a node becoming a sink node.
+
+        - cudaStreamUpdateCaptureDependencies(), if it removes a sink node from a capturing stream’s
+          dependency set.
+
+        - cudaStreamEndCapture().
+
+Updating individual nodes follows only the rules laid out earlier (at the beginning of
+`Limitations`_). Each update type has its own dedicated API call
+
+.. code::
+  :number-lines:
+
+  cudaGraphExecKernelNodeSetParams()
+  cudaGraphExecMemcpyNodeSetParams()
+  cudaGraphExecMemsetNodeSetParams()
+  cudaGraphExecHostNodeSetParams()
+  cudaGraphExecChildGraphNodeSetParams()
+  cudaGraphExecEventRecordNodeSetEvent()
+  cudaGraphExecEventWaitNodeSetEvent()
+  cudaGraphExecExternalSemaphoresSignalNodeSetParams()
+  cudaGraphExecExternalSemaphoresWaitNodeSetParams()
+
+Individual nodes can also be enabled or disabled, enabling the creation of graphs which contain a
+superset of some desired functionality, which can have nops swapped into in order to create the
+exact subset of work that an app desires at any given time.
+
+Usage Info
+----------
+
+``cudaGraph_t`` objects are not internally synchronized.
+
+``cudaGraphExec_t`` objects cannot run concurrently with itself.
+
+Graph execution happens in streams but for ordering only, creating no contraints on internal
+parallelism on the graph or where its nodes can execute.
+
+Device Graphs
+-------------
+
+On systems supporting unified addressing (discussed later), graphs can be launched from the device,
+enabling data dependent decisions without the round trip from host to device.
+
+There are limitations on such 'device graphs' that do not affect 'host graphs':
+
+- Only graphs explicity created as device graphs can be launched from the device (as well as from
+  the host).
+- Device graphs cannot be launched simultaneously: such launches from the device will return an
+  error code, such launches performed from the host and device simultaneously is undefined.
+
+Instantiating device graphs also has requirements:
+
 Meta Info
 =========
 
+
 Bookmark
 --------
-
-https://docs.nvidia.com/cuda/cuda-c-programming-guide/#creating-a-graph-using-graph-apis
